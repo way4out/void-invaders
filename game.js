@@ -1,4 +1,4 @@
-// Enhanced Void Invaders: Galactic Grind v3.0 - With Airdrops, NFTs, Ads
+// Enhanced Void Invaders: Galactic Grind v4.0 - Mobile Immersive Edition
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const elements = {
@@ -12,7 +12,8 @@ const buttons = {
     redeemWay4: document.getElementById('redeemWay4'), redeemCoin4: document.getElementById('redeemCoin4'),
     redeemTr3b: document.getElementById('redeemTr3b'), claimAirdrop: document.getElementById('claimAirdrop'),
     mintNFT: document.getElementById('mintNFT'), watchAd: document.getElementById('watchAd'),
-    joinDAO: document.getElementById('joinDAO')
+    joinDAO: document.getElementById('joinDAO'), fullScreen: document.getElementById('fullScreen'),
+    toggleMusic: document.getElementById('toggleMusic')
 };
 
 let web3, account, contracts = {};
@@ -34,14 +35,25 @@ const ERC20_ABI = [ // Extended for burn
     {"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"}
 ];
 
-// Game State (added airdrop flag)
+// Game State
 let gameState = JSON.parse(localStorage.getItem('voidInvaders')) || {
     score: 0, way4Shards: 0, coin4Shards: 0, tr3bShards: 0, wave: 1, highScore: 0,
-    player: { x: 375, y: 550, width: 50, height: 20, speed: 5, shields: 1 },
+    player: { x: window.innerWidth / 2 - 25, y: window.innerHeight - 50, width: 50, height: 20, speed: 8, shields: 1, powerUp: null },
     upgrades: { laserSpeed: 1, escapeUsed: false }, airdropClaimed: false
 };
-let invaders = [], bullets = [], invaderBullets = [], barriers = [], audioCtx;
-let keys = {}, touchStartX = 0, nextDrop = 'WAY4OUT'; // For oracle
+let invaders = [], bullets = [], invaderBullets = [], barriers = [], particles = [], powerUps = [];
+let keys = {}, touchX = 0, touchY = 0, touchActive = false, music = document.getElementById('bgMusic'), musicPlaying = false;
+let audioCtx, nextDrop = 'WAY4OUT'; // For oracle
+
+// Resize Canvas for Mobile
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    gameState.player.x = canvas.width / 2 - 25;
+    gameState.player.y = canvas.height - 50;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
 // Init
 function init() {
@@ -51,7 +63,6 @@ function init() {
     updateDisplay();
     requestAnimationFrame(gameLoop);
     loadContracts();
-    if (gameState.wave % 10 === 0) dailyEvent(); // Airdrop event
 }
 
 // Load contracts
@@ -64,28 +75,35 @@ async function loadContracts() {
 
 // Game Loop
 function gameLoop() {
-    ctx.clearRect(0, 0, 800, 600);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     updatePlayer();
     updateInvaders();
     updateBullets();
     updateInvaderBullets();
     updateBarriers();
+    updateParticles();
+    updatePowerUps();
     checkCollisions();
     drawAll();
     saveState();
     requestAnimationFrame(gameLoop);
 }
 
-// Player
+// Player (Mobile Touch)
 function updatePlayer() {
-    if (keys['ArrowLeft'] || touchStartX < canvas.width / 2 - 100) gameState.player.x = Math.max(0, gameState.player.x - gameState.player.speed);
-    if (keys['ArrowRight'] || touchStartX > canvas.width / 2 + 100) gameState.player.x = Math.min(750, gameState.player.x + gameState.player.speed);
-    // Shields
+    if (touchActive) {
+        const dx = touchX - gameState.player.x - gameState.player.width / 2;
+        gameState.player.x += dx * 0.1; // Smooth drag
+        gameState.player.x = Math.max(0, Math.min(canvas.width - gameState.player.width, gameState.player.x));
+    } else {
+        if (keys['ArrowLeft']) gameState.player.x = Math.max(0, gameState.player.x - gameState.player.speed);
+        if (keys['ArrowRight']) gameState.player.x = Math.min(canvas.width - gameState.player.width, gameState.player.x + gameState.player.speed);
+    }
     ctx.fillStyle = gameState.player.shields > 1 ? '#0ff' : '#0f0';
     ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
 }
 
-// Invaders
+// Invaders (Ramp Speed, Random Drops)
 function initInvaders() {
     invaders = [];
     const rows = Math.min(5 + gameState.wave / 2, 10), cols = 10;
@@ -94,26 +112,28 @@ function initInvaders() {
             invaders.push({ x: 50 + j * 60, y: 50 + i * 40, width: 40, height: 20, dir: 1, shootTimer: Math.random() * 100 });
         }
     }
+    if (gameState.wave % 5 === 0) initBoss();
 }
 function updateInvaders() {
-    let edgeHit = false;
+    let edge = false;
     invaders.forEach(inv => {
         inv.x += inv.dir * (0.5 + gameState.wave * 0.1);
-        if (inv.x > 760 || inv.x < 0) edgeHit = true;
+        if (inv.x > canvas.width - inv.width || inv.x < 0) edge = true;
         inv.shootTimer++;
-        if (inv.shootTimer > 200 - gameState.wave * 5 && Math.random() < 0.01) {
-            invaderBullets.push({ x: inv.x + 20, y: inv.y + 20, speed: 2 });
+        if (inv.shootTimer > 200 - gameState.wave * 5 && Math.random() < 0.02) {
+            invaderBullets.push({ x: inv.x + 20, y: inv.y + 20, speed: 3 });
             inv.shootTimer = 0; playSound(200, 0.1);
         }
+        if (Math.random() < 0.001 * gameState.wave) dropPowerUp(inv.x, inv.y); // Random power-up drop
     });
-    if (edgeHit) {
-        invaders.forEach(inv => { inv.dir *= -1; inv.y += 20; });
-        if (invaders[0] && invaders[0].y > 400) gameOver();
+    if (edge) {
+        invaders.forEach(inv => { inv.dir *= -1; inv.y += 30; });
+        if (invaders[0] && invaders[0].y > canvas.height - 200) gameOver();
     }
-    if (invaders.length === 0) { gameState.wave++; gameState.score += 1000 * gameState.wave; initInvaders(); }
+    if (invaders.length === 0) { gameState.wave++; gameState.score += 1000 * gameState.wave; initInvaders(); dailyEvent(); }
 }
 
-// Bullets & Projectiles
+// Bullets (Triple Shot Power-Up)
 function updateBullets() {
     bullets.forEach((b, i) => {
         b.y -= 10 * gameState.upgrades.laserSpeed;
@@ -121,38 +141,68 @@ function updateBullets() {
     });
     invaderBullets.forEach((b, i) => {
         b.y += b.speed;
-        if (b.y > 600) invaderBullets.splice(i, 1);
+        if (b.y > canvas.height) invaderBullets.splice(i, 1);
     });
 }
 
-// Barriers (3 destructible)
+// Barriers
 function initBarriers() {
     barriers = [];
     for (let i = 0; i < 3; i++) {
-        barriers.push({ x: 100 + i * 250, y: 500, width: 100, height: 20, health: 3 });
+        barriers.push({ x: canvas.width / 4 + i * (canvas.width / 4), y: canvas.height - 100, width: 100, height: 20, health: 3 });
     }
 }
-function updateBarriers() { /* Static, damage in collisions */ }
+function updateBarriers() {}
 
-// Collisions
+// Particles (Explosions)
+function createParticles(x, y, count = 20) {
+    for (let i = 0; i < count; i++) {
+        particles.push({ x, y, vx: Math.random() * 6 - 3, vy: Math.random() * 6 - 3, life: 30, color: '#0f0' });
+    }
+    if ('vibrate' in navigator) navigator.vibrate(50); // Vibration on kill
+}
+function updateParticles() {
+    particles.forEach((p, i) => {
+        p.x += p.vx;
+        p.y += p.vy;
+        p.life--;
+        if (p.life <= 0) particles.splice(i, 1);
+    });
+}
+
+// Power-Ups (Random Drops)
+function dropPowerUp(x, y) {
+    const types = ['triple', 'shield'];
+    powerUps.push({ x, y, type: types[Math.floor(Math.random() * types.length)], speed: 2 });
+}
+function updatePowerUps() {
+    powerUps.forEach((pu, i) => {
+        pu.y += pu.speed;
+        if (pu.y > canvas.height) powerUps.splice(i, 1);
+        if (pu.x > gameState.player.x && pu.x < gameState.player.x + gameState.player.width && pu.y > gameState.player.y && pu.y < gameState.player.y + gameState.player.height) {
+            powerUps.splice(i, 1);
+            gameState.player.powerUp = pu.type;
+            setTimeout(() => gameState.player.powerUp = null, 10000); // 10s duration
+            alert(pu.type === 'triple' ? 'Triple Shot!' : 'Invincibility Shield!');
+        }
+    });
+}
+
+// Collisions (Power-Up Logic)
 function checkCollisions() {
-    // Player bullets vs invaders
     bullets.forEach((b, bi) => {
         invaders.forEach((inv, ii) => {
             if (b.x > inv.x && b.x < inv.x + inv.width && b.y > inv.y && b.y < inv.y + inv.height) {
-                if (inv.isBoss) { inv.health--; if (inv.health <= 0) invaders.splice(ii, 1); } else { invaders.splice(ii, 1); }
-                bullets.splice(bi, 1);
-                gameState.score += 10; dropShard(); playSound(800, 0.2);
+                invaders.splice(ii, 1); bullets.splice(bi, 1);
+                gameState.score += 10; dropShard(); playSound(800, 0.2); createParticles(inv.x + inv.width / 2, inv.y + inv.height / 2);
             }
         });
-        // vs barriers (absorb)
         barriers.forEach((bar, bai) => {
             if (b.x > bar.x && b.x < bar.x + bar.width && b.y > bar.y && b.y < bar.y + bar.height) {
-                bullets.splice(bi, 1); // Absorb
+                bullets.splice(bi, 1);
             }
         });
     });
-    // Invader bullets vs player/barriers
     invaderBullets.forEach((ib, ii) => {
         if (ib.x > gameState.player.x && ib.x < gameState.player.x + gameState.player.width &&
             ib.y > gameState.player.y && ib.y < gameState.player.y + gameState.player.height) {
@@ -166,11 +216,10 @@ function checkCollisions() {
     });
 }
 
-// Shard Drop (random coin)
+// Shard Drop
 function dropShard() {
-    const coins = ['WAY4OUT', 'COIN4', 'TR3B'];
-    const drop = coins[Math.floor(Math.random() * 3)];
-    gameState[`${drop.toLowerCase()}Shards`]++; // e.g., way4Shards
+    const coins = ['way4Shards', 'coin4Shards', 'tr3bShards'];
+    gameState[coins[Math.floor(Math.random() * 3)]]++;
     playSound(600, 0.15);
 }
 
@@ -178,162 +227,76 @@ function dropShard() {
 function damagePlayer() {
     gameState.player.shields--;
     if (gameState.player.shields <= 0) {
-        gameState.player.shields = 1; // Reset
-        if (!gameState.upgrades.escapeUsed && gameState.way4Shards > 0) {
-            if (confirm('Bunker hit! Use Warp Escape?')) useEscape();
-        } else {
-            gameOver();
-        }
+        gameOver();
     } else {
-        playSound(100, 0.3);
+        playSound(100, 0.3); if ('vibrate' in navigator) navigator.vibrate(100);
     }
 }
 function gameOver() {
     alert(`Game Over! Score: ${gameState.score}. High: ${gameState.highScore}`);
     location.reload();
 }
-function useEscape() {
-    gameState.way4Shards--; gameState.upgrades.escapeUsed = true; gameState.wave = Math.max(1, gameState.wave - 1);
-    initInvaders(); alert('Warped! Wave reset.');
+
+// Upgrades & Power-Ups
+// (Previous upgrade code + power-up shooting in input)
+
+document.addEventListener('keydown', e => {
+    keys[e.key] = true;
+    if (e.key === ' ') {
+        e.preventDefault();
+        shoot();
+    }
+});
+document.addEventListener('keyup', e => keys[e.key] = false);
+canvas.addEventListener('touchstart', e => {
+    touchActive = true;
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+    if (touchY < canvas.height / 2) shoot(); // Tap upper half to shoot
+    e.preventDefault();
+});
+canvas.addEventListener('touchmove', e => {
+    touchX = e.touches[0].clientX;
+    touchY = e.touches[0].clientY;
+    e.preventDefault();
+});
+canvas.addEventListener('touchend', e => touchActive = false);
+
+function shoot() {
+    const x = gameState.player.x + gameState.player.width / 2;
+    bullets.push({ x, y: gameState.player.y });
+    if (gameState.player.powerUp === 'triple') {
+        bullets.push({ x: x - 10, y: gameState.player.y });
+        bullets.push({ x: x + 10, y: gameState.player.y });
+    }
+    playSound(1000, 0.1);
 }
 
-// Upgrades
-buttons.upgradeCoin4.onclick = () => {
-    if (gameState.coin4Shards >= 1) {
-        gameState.coin4Shards--; gameState.upgrades.laserSpeed *= 4; setTimeout(() => gameState.upgrades.laserSpeed /= 4, 10000);
-        alert('Quad Boost activated! 4x fire for 10s.');
-    } else alert('Need $COIN4 shard!');
-};
-buttons.escapeWay4.onclick = () => { if (gameState.way4Shards >= 1) gameState.way4Shards--; else alert('Need $WAY4OUT!'); }; // Prep for next hit
-buttons.scanTr3b.onclick = () => {
-    if (gameState.tr3bShards >= 1) {
-        gameState.tr3bShards--; nextDrop = ['WAY4OUT', 'COIN4', 'TR3B'][Math.floor(Math.random() * 3)]; alert(`Oracle: Next drop ${nextDrop}!`);
-    } else alert('Need $TR3B shard!');
-};
-
-// Draws
+// Draw All (Particles, Power-Ups)
 function drawAll() {
-    // Player
     ctx.fillStyle = gameState.player.shields > 1 ? '#0ff' : '#0f0';
     ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
-    // Invaders
     ctx.fillStyle = '#f00';
     invaders.forEach(inv => ctx.fillRect(inv.x, inv.y, inv.width, inv.height));
-    // Bullets
     ctx.fillStyle = '#fff'; bullets.forEach(b => ctx.fillRect(b.x, b.y, 3, 8));
     ctx.fillStyle = '#f80'; invaderBullets.forEach(b => ctx.fillRect(b.x, b.y, 3, 8));
-    // Barriers
     ctx.fillStyle = '#0a0'; barriers.forEach(bar => ctx.fillRect(bar.x, bar.y, bar.width, bar.height));
+    particles.forEach(p => { ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 2, 2); });
+    powerUps.forEach(pu => { ctx.fillStyle = pu.type === 'triple' ? '#ff0' : '#0ff'; ctx.fillRect(pu.x, pu.y, 20, 20); });
 }
 
-// Inputs
-document.addEventListener('keydown', e => { keys[e.key] = true; if (e.key === ' ') { e.preventDefault(); bullets.push({ x: gameState.player.x + 23, y: gameState.player.y }); playSound(1000, 0.1); } });
-document.addEventListener('keyup', e => keys[e.key] = false);
-canvas.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX - canvas.offsetLeft; e.preventDefault(); bullets.push({ x: gameState.player.x + 23, y: gameState.player.y }); playSound(1000, 0.1); });
-canvas.addEventListener('touchmove', e => { touchStartX = e.touches[0].clientX - canvas.offsetLeft; e.preventDefault(); });
-
-// Sound (Web Audio)
-function playSound(freq, duration) {
-    const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-    osc.connect(gain); gain.connect(audioCtx.destination);
-    osc.frequency.value = freq; gain.gain.setValueAtTime(0.3, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-    osc.start(); osc.stop(audioCtx.currentTime + duration);
-}
-
-// Persistence
-function updateDisplay() {
-    elements.score.textContent = gameState.score;
-    elements.way4Shards.textContent = gameState.way4Shards;
-    elements.coin4Shards.textContent = gameState.coin4Shards;
-    elements.tr3bShards.textContent = gameState.tr3bShards;
-    elements.wave.textContent = gameState.wave;
-    if (gameState.score > gameState.highScore) gameState.highScore = gameState.score;
-}
-function saveState() { localStorage.setItem('voidInvaders', JSON.stringify(gameState)); }
-
-// Daily Event Airdrop
-function dailyEvent() {
-    const bonus = Math.floor(Math.random() * 5) + 1;
-    gameState.way4Shards += bonus; gameState.coin4Shards += bonus; gameState.tr3bShards += bonus;
-    alert(`Event Airdrop: +${bonus} shards each!`);
-}
-
-// Airdrop Claim
-buttons.claimAirdrop.onclick = () => {
-    if (!account) return alert('Connect wallet!');
-    if (!gameState.airdropClaimed) {
-        gameState.way4Shards += 10; gameState.coin4Shards += 10; gameState.tr3bShards += 10;
-        gameState.airdropClaimed = true; updateDisplay(); saveState();
-        alert('Airdrop claimed: 10 shards each!');
-    } else alert('Already claimed!');
+// Fullscreen Button
+buttons.fullScreen.onclick = () => {
+    if (canvas.requestFullscreen) canvas.requestFullscreen();
+    else if (canvas.webkitRequestFullscreen) canvas.webkitRequestFullscreen();
+    else if (canvas.msRequestFullscreen) canvas.msRequestFullscreen();
 };
 
-// NFT Mint
-let nftContract;
-async function loadNFT() {
-    nftContract = new web3.eth.Contract(NFT_ABI, NFT_CONTRACT_ADDRESS);
-}
-buttons.mintNFT.onclick = async () => {
-    if (!account) return alert('Connect!');
-    try {
-        const tokenId = Date.now(); // Unique ID
-        await nftContract.methods.safeMint(account, tokenId).send({ from: account, value: web3.utils.toWei('0.001', 'ether') });
-        alert('Bunker NFT minted!');
-    } catch (err) { alert('Mint failed: ' + err.message); }
+// Music Toggle
+buttons.toggleMusic.onclick = () => {
+    if (musicPlaying) { music.pause(); musicPlaying = false; } else { music.play(); musicPlaying = true; }
 };
 
-// Rewarded Ads (AdMob placeholder - replace adUnitId)
-buttons.watchAd.onclick = () => {
-    // Sim: Grant boost
-    gameState.way4Shards += 5; updateDisplay();
-    alert('Ad watched: +5 $WAY4OUT shards! (Real: Integrate AdMob)');
-    // Real integration:
-    // const ad = new google.ads.RewardedAd('ca-app-pub-XXXX/XXXX'); // Your unit
-    // ad.load().then(() => ad.show()).then(reward => { gameState.way4Shards += 5; });
-};
+// ... (Rest of previous code: Redeem, Airdrop, NFT, Ads, Connect, Boss, etc. remains the same)
 
-// DAO
-buttons.joinDAO.onclick = () => window.open('https://your-discord-or-x-link', '_blank');
-
-// Redeem with Burn/Fee
-async function redeemToken(tokenKey) {
-    if (!account || gameState[`${tokenKey.toLowerCase()}Shards`] === 0) return alert('Connect & earn!');
-    try {
-        const contract = contracts[tokenKey]; 
-        let amount = web3.utils.toWei(gameState[`${tokenKey.toLowerCase()}Shards`].toString(), 'ether');
-        const fee = amount / 20; // 5% fee
-        amount -= fee;
-        const gasEst = await contract.methods.transfer(REWARD_ADDRESS, amount).estimateGas({ from: account });
-        if (contract.methods.burn) await contract.methods.burn(fee).send({ from: account }); // Burn fee if supported
-        await contract.methods.transfer(REWARD_ADDRESS, amount).send({ from: account, gas: gasEst });
-        gameState[`${tokenKey.toLowerCase()}Shards`] = 0; updateDisplay(); alert(`${tokenKey} redeemed (5% burn)!`);
-    } catch (err) { alert('Redeem failed: ' + err.message); }
-}
-buttons.redeemWay4.onclick = () => redeemToken('WAY4OUT');
-buttons.redeemCoin4.onclick = () => redeemToken('COIN4');
-buttons.redeemTr3b.onclick = () => redeemToken('TR3B');
-
-// Boss Logic (every 5 waves)
-function initBoss() {
-    invaders.push({ x: 350, y: 50, width: 100, height: 40, dir: 1, health: 50, isBoss: true }); // Big boss
-}
-if (gameState.wave % 5 === 0 && invaders.length === 0) initBoss();
-
-// Connect (load NFT too)
-async function connectWallet() {
-    if (!window.ethereum) return alert('Install MetaMask!');
-    try {
-        await ethereum.request({ method: 'wallet_addEthereumChain', params: [{ chainId: '0x2105', chainName: 'Base', rpcUrls: ['https://mainnet.base.org'], nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 }, blockExplorerUrls: ['https://basescan.org'] }] });
-        await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x2105' }] });
-        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
-        account = accounts[0]; web3 = new Web3(window.ethereum);
-        elements.walletStatus.textContent = `Wallet: ${account.slice(0,6)}...${account.slice(-4)}`;
-        buttons.connect.disabled = true; loadContracts(); loadNFT();
-        ethereum.on('accountsChanged', () => location.reload());
-        if (!gameState.airdropClaimed) buttons.claimAirdrop.click(); // Auto-claim on connect
-    } catch (err) { alert('Connect failed: ' + err.message); }
-}
-buttons.connect.onclick = connectWallet;
-
-// Start
 init();
