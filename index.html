@@ -5,31 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Void Invaders: Galactic Grind</title>
     <style>
-        body { background: #000 url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxkZWZzPjxwYXR0ZXJuIGlkPSJzdGFycyIgd2lkdGg9IjUwIiBoZWlnaHQ9IjUwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48Y2lyY2xlIGN4PSIyNSIgyT0iMjUiIHI9IjEiIGZpbGw9IiNmZmYiLz48Y2lyY2xlIGN4PSIxMCIgyT0iMTAiIHI9IjAuNSIgZmlsbD0iI2ZmZiIvPjxyZW1vdGUgY3g9IjQwIiBjeT0iNDAiIHI9IjAuNSIgZmlsbD0iI2ZmZiIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNzdGFycykiLz48L3N2Zz4=') repeat; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
-        h1 { text-shadow: 0 0 10px #0f0, 0 0 20px #0f0; animation: glow 1.5s infinite alternate; }
-        @keyframes glow { 0% { text-shadow: 0 0 5px #0f0; } 100% { text-shadow: 0 0 20px #0f0, 0 0 30px #0f0; } }
-        canvas { border: 2px solid #0f0; background: rgba(17, 17, 17, 0.8); display: block; margin: 0 auto; width: 100%; height: calc(100vh - 60px); touch-action: none; border-radius: 10px; box-shadow: 0 0 20px #0f0; }
-        #controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; margin: 5px; position: absolute; z-index: 10; width: 100%; }
-        button { background: linear-gradient(#0f0, #00f); color: #000; border: none; padding: 8px 15px; cursor: pointer; font-family: inherit; border-radius: 5px; text-shadow: 0 0 5px #fff; transition: transform 0.2s; }
-        button:hover { transform: scale(1.1); }
+        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
+        h1 { text-shadow: 0 0 10px #0f0; animation: glow 2s infinite; }
+        @keyframes glow { 0%,100%{text-shadow:0 0 5px #0f0;} 50%{text-shadow:0 0 20px #0f0;} }
+        canvas { border: 2px solid #0f0; background: #111; display: block; margin: 0 auto; width: 100%; height: calc(100vh - 60px); touch-action: none; }
+        #controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; margin: 10px; position: absolute; z-index: 10; width: 100%; }
+        button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 5px 10px; cursor: pointer; font-family: inherit; }
+        button:hover, button:disabled { background: #0f0; color: #000; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
-        #status { font-size: 12px; position: absolute; top: 10px; left: 10px; z-index: 10; background: rgba(0,0,0,0.5); padding: 5px; border-radius: 5px; }
+        #status { font-size: 12px; position: absolute; top: 10px; left: 10px; z-index: 10; }
         #ticker { position: absolute; top: 0; left: 0; width: 100%; background: rgba(0,255,0,0.1); font-size: 10px; white-space: nowrap; animation: scroll 20s linear infinite; z-index: 10; }
         @keyframes scroll { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-        .shard-display { display: inline-block; margin: 2px; padding: 2px 5px; background: rgba(17,17,17,0.8); border: 1px solid #0f0; border-radius: 5px; box-shadow: 0 0 5px #0f0; }
-        #viewsTicker { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.5); color: #0f0; font-size: 10px; text-align: center; padding: 5px; z-index: 10; border-top: 1px solid #0f0; }
+        .shard-display { display: inline-block; margin: 2px; padding: 2px 5px; background: #111; border: 1px solid #0f0; }
+        #viewsTicker { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.5); color: #0f0; font-size: 10px; text-align: center; padding: 5px; z-index: 10; }
+        #leaderboard { position: absolute; top: 50px; right: 10px; background: #111; padding: 10px; border: 1px solid #0f0; z-index: 10; }
         #achievement { position: absolute; bottom: 40px; left: 10px; color: #f00; font-size: 14px; z-index: 10; animation: fadeIn 2s; }
         @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
-        #leaderboard { position: absolute; top: 50px; right: 10px; background: rgba(17,17,17,0.8); padding: 10px; border: 1px solid #0f0; z-index: 10; border-radius: 5px; box-shadow: 0 0 10px #0f0; }
-        #lbList { list-style-type: none; padding: 0; }
-        #lbList li { margin: 2px 0; }
     </style>
 </head>
 <body>
     <div id="ticker">$WAY4OUT: $0.0012 ↑2% | $COIN4: $0.0045 ↑15% | $TR3B: $0.0008 ↓1% | Grind to Mine!</div>
     <h1>Void Invaders: Galactic Grind</h1>
     <p>Defend the void, mine shards, redeem for $WAY4OUT/$COIN4/$TR3B on Base!</p>
-    <button id="connectWallet">Connect MetaMask (Base)</button>
+    <button id="connectWallet">Connect Wallet</button>
     <p id="walletStatus">Wallet: Disconnected</p>
     <div id="controls">
         <button id="claimAirdrop">Claim Airdrop</button>
