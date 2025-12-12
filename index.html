@@ -4,60 +4,75 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Void Invaders: Galactic Grind</title>
+    <script src="https://unpkg.com/wagmi@2/dist/index.js"></script>
+    <script src="https://unpkg.com/viem@2/dist/index.js"></script>
+    <script src="https://unpkg.com/@rainbow-me/rainbowkit@2/dist/index.js"></script>
+    <script src="https://unpkg.com/@thirdweb-dev/react@4/dist/thirdweb-dev-react.umd.production.js"></script>
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
         body {
             margin: 0;
             padding: 0;
-            background: #000;
+            background: radial-gradient(circle at center, #000428 0%, #004e92 100%);
             color: #00ff00;
-            font-family: 'Courier New', monospace;
+            font-family: 'Orbitron', monospace;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             overflow: hidden;
+            animation: pulse 4s ease-in-out infinite alternate;
+        }
+        @keyframes pulse {
+            0% { background: radial-gradient(circle at center, #000428 0%, #004e92 100%); }
+            100% { background: radial-gradient(circle at center, #004e92 0%, #000428 100%); }
         }
         #gameContainer {
             text-align: center;
             border: 2px solid #00ff00;
             padding: 20px;
+            box-shadow: 0 0 50px #00ff00;
+            border-radius: 10px;
         }
         #header {
             margin-bottom: 10px;
         }
         #prices {
-            font-size: 14px;
+            font-size: 12px;
             margin-bottom: 10px;
+            opacity: 0.8;
         }
         #gameInfo {
             margin-bottom: 10px;
-            font-size: 16px;
+            font-size: 14px;
         }
         #canvas {
             border: 1px solid #00ff00;
-            background: #111;
+            background: #000;
+            box-shadow: inset 0 0 20px #000;
         }
         #controls {
             margin-top: 10px;
-            font-size: 12px;
+            font-size: 10px;
+            opacity: 0.7;
         }
-        #mineBtn {
-            background: #00ff00;
+        #mineBtn, #redeemBtn, #mintNFTBtn {
+            background: linear-gradient(45deg, #00ff00, #00cc00);
             color: #000;
             border: none;
             padding: 10px 20px;
             font-family: inherit;
             cursor: pointer;
             margin: 5px;
+            border-radius: 5px;
+            font-weight: bold;
+            transition: transform 0.2s;
         }
-        #redeemBtn {
-            background: #ff00ff;
-            color: #000;
-            border: none;
-            padding: 10px 20px;
-            font-family: inherit;
-            cursor: pointer;
-            margin: 5px;
+        #mineBtn:hover, #redeemBtn:hover, #mintNFTBtn:hover {
+            transform: scale(1.05);
+        }
+        #mintNFTBtn {
+            background: linear-gradient(45deg, #ff00ff, #cc00cc);
         }
         #modal {
             display: none;
@@ -65,10 +80,12 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: #000;
+            background: rgba(0,0,0,0.9);
             border: 2px solid #00ff00;
             padding: 20px;
             z-index: 10;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
         }
         #overlay {
             display: none;
@@ -80,48 +97,99 @@
             background: rgba(0,0,0,0.8);
             z-index: 5;
         }
+        .token-link {
+            color: #00ff00;
+            text-decoration: none;
+            font-size: 10px;
+        }
+        .token-link:hover {
+            text-shadow: 0 0 10px #00ff00;
+        }
     </style>
 </head>
 <body>
     <div id="gameContainer">
         <div id="header">
             <h1># Void Invaders: Galactic Grind</h1>
-            <div id="prices">$WAY4OUT: <span id="way4out">$0.0012</span> ↑2% | $COIN4: <span id="coin4">$0.0045</span> ↑15% | $TR3B: <span id="tr3b">$0.0008</span> ↓1% | Grind to Mine!</div>
+            <div id="prices">
+                <a href="https://base.app/coin/base-mainnet/0x46d4c3d87d66d58e0035cd3b269a41875c06692b" target="_blank" class="token-link">$WAY4OUT</a>: <span id="way4out">$0.0012</span> ↑2% | 
+                <a href="https://base.app/coin/base-mainnet/0xf097454f9874ce870d0d4cd8d419c3de4e63197e" target="_blank" class="token-link">$A1i3N</a>: <span id="a1ien">$0.0005</span> ↑10% | 
+                <a href="https://base.app/coin/base-mainnet/0x4deeba0fca2f9a8b307b891241eac57b6bf713ec" target="_blank" class="token-link">$COIN4</a>: <span id="coin4">$0.0045</span> ↑15% | 
+                <a href="https://base.app/coin/base-mainnet/0x98a8165a44782ab43c378ed9f501d55ec51b2880" target="_blank" class="token-link">$TR3B</a>: <span id="tr3b">$0.0008</span> ↓1% | Grind to Mine!
+            </div>
         </div>
         <div id="gameInfo">
             Wallet: <span id="wallet">Disconnected</span><br>
-            Score: <span id="score">0</span> | $WAY4OUT: <span id="wayScore">0</span> | $COIN4: <span id="coinScore">0</span> | $TR3B: <span id="tr3bScore">0</span> | Wave: <span id="wave">1</span>
+            Score: <span id="score">0</span> Shards | Wave: <span id="wave">1</span> | Kills: <span id="kills">0</span><br>
+            Rewards: $WAY4OUT: <span id="wayScore">0</span> | $A1i3N: <span id="a1ienScore">0</span> | $COIN4: <span id="coinScore">0</span> | $TR3B: <span id="tr3bScore">0</span>
         </div>
         <canvas id="canvas" width="800" height="600"></canvas>
         <div id="controls">
-            Use ← → or A/D to move | SPACE to shoot
+            Use ← → or A/D to move | SPACE to shoot | Hold for power-ups
         </div>
         <button id="mineBtn">Mine Shards (AFK Grind)</button>
-        <button id="redeemBtn">Redeem for Tokens</button>
+        <button id="redeemBtn">Redeem Shards for Tokens</button>
+        <button id="mintNFTBtn">Mint Zora NFT Victory Badge</button>
     </div>
 
     <div id="overlay"></div>
     <div id="modal">
-        <h2>Redeem Shards</h2>
-        <p>Convert your shards to Base tokens!</p>
+        <h2>Redeem & Mint</h2>
+        <p>Convert shards to Base tokens & mint your Zora NFT!</p>
         <div id="redeemInfo"></div>
         <button onclick="closeModal()">Close</button>
     </div>
 
     <script>
+        // Thirdweb Setup for Base Chain
+        const { ThirdwebProvider, useContract, useActiveAccount } = ThirdwebSDK;
+        const baseConfig = {
+            chain: "base",
+            address: "0xCeA57eEdA6eF19ce51caBE00e4CF425a31802D74", // Your wallet for rewards
+        };
+        // Note: For full integration, wrap in <ThirdwebProvider config={baseConfig}> in React; here simulated for vanilla
+
+        // Zora NFT Mint Simulation (calls to your Zora collection; replace with actual contract)
+        const ZORA_CONTRACT = "0xYourZoraNFTContractAddress"; // Placeholder - use actual Zora mint contract
+        async function mintZoraNFT(shards, wallet) {
+            // Simulate API call to Zora for minting (in prod, use thirdweb or direct ABI)
+            console.log(`Minting Zora NFT for ${wallet} with ${shards} shards proof. Tx: 0xsimulatedhash`);
+            // Actual impl: await contract.erc721.mint(to: wallet, uri: `ipfs://your-metadata-${shards}`);
+            alert("Zora NFT Minted! Check your wallet for the Void Invader Badge.");
+            return true;
+        }
+
+        // Token Contracts (for redemption simulation)
+        const TOKENS = {
+            WAY4OUT: "0x46d4c3d87d66d58e0035cd3b269a41875c06692b",
+            A1IEN: "0xf097454f9874ce870d0d4cd8d419c3de4e63197e",
+            COIN4: "0x4deeba0fca2f9a8b307b891241eac57b6bf713ec",
+            TR3B: "0x98a8165a44782ab43c378ed9f501d55ec51b2880"
+        };
+
+        // Wallet Connect Simulation (RainbowKit placeholder)
+        let connectedWallet = null;
+        async function connectWallet() {
+            // Simulate RainbowKit connect
+            connectedWallet = "0xCeA57eEdA6eF19ce51caBE00e4CF425a31802D74"; // Your address for demo
+            document.getElementById('wallet').textContent = connectedWallet.slice(0,6) + '...' + connectedWallet.slice(-4);
+            alert('Wallet Connected: ' + connectedWallet);
+        }
+        document.getElementById('wallet').addEventListener('click', connectWallet);
+
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         const scoreEl = document.getElementById('score');
         const wayScoreEl = document.getElementById('wayScore');
+        const a1ienScoreEl = document.getElementById('a1ienScore');
         const coinScoreEl = document.getElementById('coinScore');
         const tr3bScoreEl = document.getElementById('tr3bScore');
         const waveEl = document.getElementById('wave');
+        const killsEl = document.getElementById('kills');
 
         // Game state
         let score = 0;
-        let wayScore = 0;
-        let coinScore = 0;
-        let tr3bScore = 0;
+        let kills = 0;
         let wave = 1;
         let gameRunning = true;
         let mining = false;
@@ -132,203 +200,292 @@
             y: canvas.height - 50,
             width: 30,
             height: 20,
-            speed: 5
+            speed: 6,
+            powerUp: false
         };
 
-        // Enemies array
+        // Arrays
         let enemies = [];
         let bullets = [];
         let enemyBullets = [];
+        let particles = []; // For immersive explosions
 
-        // Input handling
+        // Input
         const keys = {};
-        document.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; });
+        document.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; if (e.key === ' ') e.preventDefault(); });
         document.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
 
-        // Simple beep sound
-        function beep(frequency = 440, duration = 100) {
+        // Audio (immersive beeps)
+        function beep(frequency = 440, duration = 100, type = 'sine') {
             const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = audioCtx.createOscillator();
             const gainNode = audioCtx.createGain();
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
             oscillator.frequency.value = frequency;
+            oscillator.type = type;
             gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
             gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration / 1000);
             oscillator.start(audioCtx.currentTime);
             oscillator.stop(audioCtx.currentTime + duration / 1000);
         }
 
-        // Create enemy
-        function createEnemy() {
-            const enemy = {
-                x: Math.random() * (canvas.width - 40),
-                y: 0,
-                width: 40,
-                height: 30,
-                speed: 1 + wave * 0.5,
-                shootTimer: Math.random() * 2000 + 1000
-            };
-            enemies.push(enemy);
+        // Particles for explosions
+        function createParticles(x, y, color = '#ff00ff') {
+            for (let i = 0; i < 10; i++) {
+                particles.push({
+                    x, y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 1,
+                    color
+                });
+            }
         }
 
-        // Shoot bullet
-        function shoot(x, y, isPlayer = true) {
-            const bullet = { x, y, width: 4, height: 10, speed: isPlayer ? 7 : -5 };
-            if (isPlayer) bullets.push(bullet);
-            else enemyBullets.push(bullet);
+        // Create enemy (with alien variants for $A1i3N theme)
+        function createEnemy() {
+            const types = ['basic', 'a1ien']; // Tie to $A1i3N for special drops
+            const type = Math.random() < 0.3 ? 'a1ien' : 'basic';
+            const enemy = {
+                x: Math.random() * (canvas.width - 40),
+                y: -30,
+                width: 40,
+                height: 30,
+                speed: 1 + wave * 0.3,
+                shootTimer: Math.random() * 1500 + 1000,
+                type,
+                color: type === 'a1ien' ? '#ff00ff' : '#ff0000'
+            };
+            enemies.push(enemy);
+            if (type === 'a1ien') beep(300, 200, 'sawtooth'); // Spooky sound
+        }
+
+        // Shoot
+        function shoot(x, y, isPlayer = true, power = 1) {
+            const speed = isPlayer ? (player.powerUp ? 10 : 7) : -6;
+            for (let i = 0; i < power; i++) {
+                const bullet = {
+                    x: x + (i * 5),
+                    y,
+                    width: 4,
+                    height: 10,
+                    speed
+                };
+                if (isPlayer) bullets.push(bullet);
+                else enemyBullets.push(bullet);
+            }
             beep(isPlayer ? 800 : 200);
         }
 
-        // Update game
+        // Update
         function update() {
             if (!gameRunning) return;
 
-            // Player movement
+            // Movement
             if ((keys['arrowleft'] || keys['a']) && player.x > 0) player.x -= player.speed;
             if ((keys['arrowright'] || keys['d']) && player.x < canvas.width - player.width) player.x += player.speed;
-
-            // Shoot on space
             if (keys[' ']) {
-                if (!keys.lastShot || Date.now() - keys.lastShot > 200) {
-                    shoot(player.x + player.width / 2, player.y, true);
+                if (!keys.lastShot || Date.now() - keys.lastShot > (player.powerUp ? 100 : 200)) {
+                    shoot(player.x + player.width / 2, player.y, true, player.powerUp ? 3 : 1);
                     keys.lastShot = Date.now();
                 }
             }
 
-            // Spawn enemies
-            if (Math.random() < 0.02 + wave * 0.005) createEnemy();
+            // Power-up timer
+            if (player.powerUp && Date.now() - player.powerUpStart > 5000) player.powerUp = false;
+
+            // Spawn enemies (more immersive waves)
+            if (Math.random() < 0.03 + wave * 0.008) createEnemy();
 
             // Update bullets
-            bullets = bullets.filter(b => {
-                b.y -= b.speed;
-                return b.y > 0;
-            });
-            enemyBullets = enemyBullets.filter(b => {
-                b.y += Math.abs(b.speed);
-                return b.y < canvas.height;
-            });
+            bullets = bullets.filter(b => { b.y -= b.speed; return b.y > -10; });
+            enemyBullets = enemyBullets.filter(b => { b.y += Math.abs(b.speed); return b.y < canvas.height + 10; });
 
             // Update enemies
             enemies.forEach((e, i) => {
                 e.y += e.speed;
+                e.x += Math.sin(e.y * 0.01) * 2; // Wavy movement for immersion
                 e.shootTimer--;
                 if (e.shootTimer <= 0) {
                     shoot(e.x + e.width / 2, e.y + e.height, false);
                     e.shootTimer = Math.random() * 2000 + 1000;
                 }
-                if (e.y > canvas.height) {
+                if (e.y > canvas.height + 20) {
                     enemies.splice(i, 1);
                     gameRunning = false;
-                    alert('Void breached! Game Over. Final Score: ' + score);
+                    alert(`Void Breached! Final Shards: ${Math.floor(score)} | Mint your NFT to continue the fight.`);
                 }
             });
 
-            // Collisions: bullets vs enemies
+            // Bullet-Enemy collisions
             bullets.forEach((b, bi) => {
                 enemies.forEach((e, ei) => {
-                    if (b.x < e.x + e.width && b.x + b.width > e.x && b.y < e.y + e.height && b.y + b.height > e.y) {
+                    if (b.x < e.x + e.width && b.x + b.width > e.x &&
+                        b.y < e.y + e.height && b.y + b.height > e.y) {
+                        createParticles(e.x + e.width/2, e.y + e.height/2, e.color);
                         enemies.splice(ei, 1);
                         bullets.splice(bi, 1);
-                        score += 10;
-                        if (score % 10 === 0) wave++;
+                        score += e.type === 'a1ien' ? 50 : 10;
+                        kills++;
                         beep(600, 50);
+                        if (kills % 10 === 0) {
+                            wave++;
+                            player.powerUp = true;
+                            player.powerUpStart = Date.now();
+                            alert('Power-up Activated! Triple shots for 5s.');
+                        }
                     }
                 });
             });
 
-            // Collisions: enemy bullets vs player
+            // Enemy bullet-player collision
             enemyBullets.forEach((b, bi) => {
-                if (b.x < player.x + player.width && b.x + b.width > player.x && b.y < player.y + player.height && b.y + b.height > player.y) {
+                if (b.x < player.x + player.width && b.x + b.width > player.x &&
+                    b.y < player.y + player.height && b.y + b.height > player.y) {
+                    createParticles(player.x + player.width/2, player.y + player.height/2, '#00ff00');
                     enemyBullets.splice(bi, 1);
                     gameRunning = false;
-                    alert('Hit! Game Over. Final Score: ' + score);
+                    alert(`Hit! Final Shards: ${Math.floor(score)}`);
                 }
             });
 
-            // Passive mining
-            if (mining) {
-                score += 0.1;
-            }
+            // Update particles
+            particles = particles.filter(p => {
+                p.x += p.vx;
+                p.y += p.vy;
+                p.life -= 0.02;
+                p.vy += 0.1; // Gravity
+                return p.life > 0;
+            });
+
+            // Mining
+            if (mining) score += 0.2;
 
             // Update UI
             scoreEl.textContent = Math.floor(score);
-            wayScoreEl.textContent = Math.floor(score / 100);
-            coinScoreEl.textContent = Math.floor(score / 200);
-            tr3bScoreEl.textContent = Math.floor(score / 500);
+            wayScoreEl.textContent = Math.floor(score / 50); // Adjusted rates
+            a1ienScoreEl.textContent = Math.floor(score / 100);
+            coinScoreEl.textContent = Math.floor(score / 150);
+            tr3bScoreEl.textContent = Math.floor(score / 200);
             waveEl.textContent = wave;
+            killsEl.textContent = kills;
 
-            // Fake price fluctuations
-            document.getElementById('way4out').textContent = '$' + (0.001 + Math.random() * 0.001).toFixed(4);
-            document.getElementById('coin4').textContent = '$' + (0.004 + Math.random() * 0.002).toFixed(4);
-            document.getElementById('tr3b').textContent = '$' + (0.0008 + Math.random() * 0.0002).toFixed(4);
+            // Fluctuating prices
+            ['way4out', 'a1ien', 'coin4', 'tr3b'].forEach(id => {
+                const el = document.getElementById(id);
+                const base = parseFloat(el.textContent.slice(1));
+                const change = (Math.random() - 0.5) * 0.002;
+                el.textContent = '$' + (base + change).toFixed(4);
+            });
 
             requestAnimationFrame(update);
         }
 
-        // Draw everything
+        // Draw (immersive visuals)
         function draw() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Draw player (triangle ship)
-            ctx.fillStyle = '#00ff00';
+            // Stars background
+            ctx.fillStyle = '#fff';
+            for (let i = 0; i < 100; i++) {
+                const x = (i * 37) % canvas.width;
+                const y = (i * 23) % canvas.height;
+                ctx.fillRect(x, y, 1, 1);
+            }
+
+            // Player ship (glowing triangle)
+            ctx.fillStyle = player.powerUp ? '#ffff00' : '#00ff00';
+            ctx.shadowColor = ctx.fillStyle;
+            ctx.shadowBlur = 20;
             ctx.beginPath();
             ctx.moveTo(player.x + player.width / 2, player.y);
             ctx.lineTo(player.x, player.y + player.height);
             ctx.lineTo(player.x + player.width, player.y + player.height);
             ctx.closePath();
             ctx.fill();
+            ctx.shadowBlur = 0;
 
-            // Draw bullets
+            // Bullets
             ctx.fillStyle = '#ffff00';
             bullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
             ctx.fillStyle = '#ff0000';
             enemyBullets.forEach(b => ctx.fillRect(b.x, b.y, b.width, b.height));
 
-            // Draw enemies (squares with eyes)
-            ctx.fillStyle = '#ff00ff';
+            // Enemies (kickass aliens)
             enemies.forEach(e => {
+                ctx.fillStyle = e.color;
                 ctx.fillRect(e.x, e.y, e.width, e.height);
+                // Eyes
                 ctx.fillStyle = '#00ff00';
-                ctx.fillRect(e.x + 5, e.y + 5, 5, 5); // eye 1
-                ctx.fillRect(e.x + 30, e.y + 5, 5, 5); // eye 2
-                ctx.fillStyle = '#ff00ff';
+                ctx.fillRect(e.x + 5, e.y + 5, 5, 5);
+                ctx.fillRect(e.x + 30, e.y + 5, 5, 5);
+                // Tentacles for A1i3N
+                if (e.type === 'a1ien') {
+                    ctx.strokeStyle = e.color;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(e.x + 10, e.y + e.height);
+                    ctx.lineTo(e.x + 10, e.y + e.height + 20);
+                    ctx.moveTo(e.x + 30, e.y + e.height);
+                    ctx.lineTo(e.x + 30, e.y + e.height + 20);
+                    ctx.stroke();
+                }
             });
+
+            // Particles
+            particles.forEach(p => {
+                ctx.fillStyle = p.color;
+                ctx.globalAlpha = p.life;
+                ctx.fillRect(p.x, p.y, 3, 3);
+            });
+            ctx.globalAlpha = 1;
         }
 
-        // Event listeners
+        // Events
         document.getElementById('mineBtn').addEventListener('click', () => {
+            if (!connectedWallet) return alert('Connect wallet first!');
             mining = !mining;
             document.getElementById('mineBtn').textContent = mining ? 'Stop Mining' : 'Mine Shards (AFK Grind)';
             beep(400);
         });
 
-        document.getElementById('redeemBtn').addEventListener('click', () => {
+        document.getElementById('redeemBtn').addEventListener('click', async () => {
+            if (!connectedWallet) return alert('Connect wallet first!');
             const totalShards = score;
-            document.getElementById('redeemInfo').innerHTML = `
-                <p>Shards to redeem: ${Math.floor(totalShards)}</p>
-                <p>$WAY4OUT: ${Math.floor(totalShards / 100)} (x${totalShards / 100})</p>
-                <p>$COIN4: ${Math.floor(totalShards / 200)} (x${totalShards / 200})</p>
-                <p>$TR3B: ${Math.floor(totalShards / 500)} (x${totalShards / 500})</p>
+            const info = `
+                <p>Shards: ${Math.floor(totalShards)}</p>
+                <p>$WAY4OUT: ${Math.floor(totalShards / 50)}</p>
+                <p>$A1i3N: ${Math.floor(totalShards / 100)}</p>
+                <p>$COIN4: ${Math.floor(totalShards / 150)}</p>
+                <p>$TR3B: ${Math.floor(totalShards / 200)}</p>
             `;
-            console.log(`Redeeming ${totalShards} shards on Base: WAY4OUT=${Math.floor(totalShards / 100)}, COIN4=${Math.floor(totalShards / 200)}, TR3B=${Math.floor(totalShards / 500)}`);
+            document.getElementById('redeemInfo').innerHTML = info;
+            console.log(`Redeeming to ${connectedWallet} via Base tokens...`);
+            // Simulate transfer from your wallet
+            alert('Tokens redeemed! Check your Base wallet.');
             showModal();
         });
 
-        function showModal() {
+        document.getElementById('mintNFTBtn').addEventListener('click', async () => {
+            if (!connectedWallet || score < 100) return alert('Need 100+ shards and connected wallet!');
+            await mintZoraNFT(score, connectedWallet);
+            score -= 100; // Deduct for mint
+        });
+
+        function showModal() { 
             document.getElementById('overlay').style.display = 'block';
             document.getElementById('modal').style.display = 'block';
         }
-
         function closeModal() {
             document.getElementById('overlay').style.display = 'none';
             document.getElementById('modal').style.display = 'none';
         }
 
-        // Start game
+        // Init
+        if (connectedWallet) connectWallet(); // Auto for demo
+        setInterval(draw, 16);
         update();
-        draw();
-        setInterval(draw, 16); // ~60fps
     </script>
 </body>
 </html>
