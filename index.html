@@ -309,6 +309,64 @@
         buttons.connect.onclick = connectWallet;
 
         init();
-    </script>
+    <<script src="https://cdn.jsdelivr.net/npm/web3@1.8.0/dist/web3.min.js"></script>
+<script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
+<script>
+// UNIVERSAL WALLET CONNECT — WORKS ON METAMASK APP, COINBASE WALLET, TRUST WALLET, DESKTOP — EVERYTHING
+let web3, account;
+
+async function connectWallet() {
+    // 1. Try MetaMask in-app browser first
+    if (window.ethereum) {
+        web3 = new Web3(window.ethereum);
+        try {
+            await window.ethereum.request({ method: 'eth_requestAccounts' });
+            account = (await web3.eth.getAccounts())[0];
+        } catch (e) { alert("MetaMask denied"); return; }
+    } 
+    // 2. If no injected provider → open WalletConnect (QR code on desktop, deep-link on mobile)
+    else {
+        const provider = new WalletConnectProvider({
+            rpc: { 8453: "https://mainnet.base.org" },
+            chainId: 8453,
+            qrcodeModal: QRCodeModal
+        });
+        await provider.enable();
+        web3 = new Web3(provider);
+        account = provider.accounts[0];
+    }
+
+    // Switch to Base (silent if already there)
+    try {
+        await window.ethereum?.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x2105' }]
+        });
+    } catch (e) {
+        await window.ethereum?.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+                chainId: '0x2105',
+                chainName: 'Base',
+                rpcUrls: ['https://mainnet.base.org'],
+                nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
+                blockExplorerUrls: ['https://basescan.org']
+            }]
+        });
+    }
+
+    document.getElementById('walletStatus').textContent = `Wallet: ${account.slice(0,6)}...${account.slice(-4)}`;
+    document.getElementById('connectWallet').textContent = 'Wallet Connected';
+    document.getElementById('connectWallet').disabled = true;
+
+    // YOUR GAME CODE CONTINUES HERE (loadContracts, claimAirdrop, etc.)
+    loadContracts();
+    if (!localStorage.getItem('airdropClaimed')) {
+        // give airdrop etc.
+    }
+}
+
+document.getElementById('connectWallet').onclick = connectWallet;
+</script>
 </body>
 </html>
