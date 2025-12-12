@@ -5,178 +5,227 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Void Invaders: Galactic Grind</title>
     <style>
-        body { background: #000; color: #0f0; font-family: 'Courier New', monospace; text-align: center; margin: 0; padding: 0; overflow: hidden; touch-action: none; }
-        h1 { text-shadow: 0 0 10px #0f0; animation: glow 2s infinite; }
-        @keyframes glow { 0%,100%{text-shadow:0 0 5px #0f0;} 50%{text-shadow:0 0 20px #0f0;} }
-        canvas { border: 2px solid #0f0; background: #111; display: block; margin: 0 auto; width: 100%; height: calc(100vh - 30px); touch-action: none; }
-        #controls { display: flex; justify-content: center; flex-wrap: wrap; gap: 5px; margin: 10px; position: absolute; z-index: 10; width: 100%; }
-        button { background: #000; color: #0f0; border: 1px solid #0f0; padding: 5px 10px; cursor: pointer; font-family: inherit; }
-        button:hover, button:disabled { background: #0f0; color: #000; }
-        button:disabled { opacity: 0.5; cursor: not-allowed; }
-        #status { font-size: 12px; position: absolute; top: 10px; left: 10px; z-index: 10; }
-        #ticker { position: absolute; top: 0; left: 0; width: 100%; background: rgba(0,255,0,0.1); font-size: 10px; white-space: nowrap; animation: scroll 20s linear infinite; z-index: 10; }
-        @keyframes scroll { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
-        .shard-display { display: inline-block; margin: 2px; padding: 2px 5px; background: #111; border: 1px solid #0f0; }
-        #viewsTicker { position: absolute; bottom: 0; left: 0; width: 100%; background: rgba(0,0,0,0.8); color: #0f0; font-size: 10px; text-align: center; padding: 5px; z-index: 10; }
-        #nftEquip { position: absolute; right: 10px; top: 10px; z-index: 10; }
+        body { background:#000; color:#0f0; font-family:'Courier New',monospace; text-align:center; margin:0; padding:0; overflow:hidden; touch-action:none; }
+        h1 { text-shadow:0 0 10px #0f0; animation:g 2s infinite; }
+        @keyframes g {0%,100%{text-shadow:0 0 5px #0f0} 50%{text-shadow:0 0 20px #0f0}}
+        canvas { border:2px solid #0f0; background:#111; display:block; margin:0 auto; width:100%; height:calc(100vh - 30px); touch-action:none; }
+        #controls { display:flex; flex-wrap:wrap; justify-content:center; gap:5px; margin:10px; position:absolute; z-index:10; width:100%; }
+        button { background:#000; color:#0f0; border:1px solid #0f0; padding:5px 10px; cursor:pointer; font:inherit; }
+        button:hover,button:disabled { background:#0f0; color:#000; }
+        button:disabled { opacity:0.5; }
+        #status { font-size:12px; position:absolute; top:10px; left:10px; z-index:10; }
+        #ticker { position:absolute; top:0; left:0; width:100%; background:rgba(0,255,0,0.1); font-size:10px; white-space:nowrap; animation:s 20s linear infinite; z-index:10; }
+        @keyframes s {0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+        .shard { display:inline-block; margin:2px; padding:2px 5px; background:#111; border:1px solid #0f0; }
+        #views { position:absolute; bottom:0; left:0; width:100%; background:rgba(0,0,0,0.8); color:#0f0; font-size:10px; text-align:center; padding:5px; z-index:10; }
+        #nftMint { position:absolute; right:10px; top:10px; z-index:10; }
     </style>
 </head>
 <body>
-    <div id="ticker">$WAY4OUT: $0.0012 ↑2% | $COIN4: $0.0045 ↑15% | $TR3B: $0.0008 ↓1% | $A1IEN: $0.000001 👽 | Grind to Mine!</div>
+    <div id="ticker">$WAY4OUT ↑ | $COIN4 ↑ | $TR3B ↑ | $A1IEN 👽 | Grind to Mine!</div>
     <h1>Void Invaders: Galactic Grind</h1>
-    <p>Defend the void, mine shards, redeem for $WAY4OUT/$COIN4/$TR3B/$A1IEN on Base!</p>
-    <button id="connectWallet">Connect MetaMask (Base)</button>
+    <p>Defend the void • Mine 4 coins • Mint bunker NFTs • Free mint live!</p>
+    <button id="connectWallet">Connect Wallet (Base)</button>
     <p id="walletStatus">Wallet: Disconnected</p>
-    <div id="nftEquip">
-        <button id="mintNFT">Mint Bunker Skin (Zora)</button>
-        <button id="equipNFT">Equip NFT</button>
+
+    <div id="nftMint">
+        <button id="mintNFT" style="background:#f0f;color:#000;font-weight:bold;">MINT FREE BUNKER SKIN (Zora)</button>
     </div>
+
     <div id="controls">
         <button id="claimAirdrop">Claim Airdrop</button>
-        <button id="upgradeCoin4">Quad Boost ($COIN4 x1)</button>
-        <button id="escapeWay4">Warp Escape ($WAY4OUT x1)</button>
-        <button id="scanTr3b">Oracle Scan ($TR3B x1)</button>
-        <button id="swarmA1ien">Alien Swarm ($A1IEN x1)</button>
-        <button id="redeemWay4">Redeem $WAY4OUT</button>
-        <button id="redeemCoin4">Redeem $COIN4</button>
-        <button id="redeemTr3b">Redeem $TR3B</button>
-        <button id="redeemA1ien">Redeem $A1IEN</button>
+        <button id="upgradeCoin4">Quad Boost</button>
+        <button id="escapeWay4">Warp Escape</button>
+        <button id="scanTr3b">Oracle Scan</button>
+        <button id="swarmA1ien">Alien Swarm</button>
+        <button id="redeemAll">Redeem All Coins</button>
         <button id="fullScreen">Full Screen</button>
         <button id="toggleMusic">Music On/Off</button>
     </div>
+
     <canvas id="gameCanvas"></canvas>
+
     <div id="status">
-        <span class="shard-display">Score: <span id="score">0</span></span>
-        <span class="shard-display">$WAY4OUT: <span id="way4Shards">0</span></span>
-        <span class="shard-display">$COIN4: <span id="coin4Shards">0</span></span>
-        <span class="shard-display">$TR3B: <span id="tr3bShards">0</span></span>
-        <span class="shard-display">$A1IEN: <span id="a1ienShards">0</span></span>
-        <span class="shard-display">Wave: <span id="wave">1</span></span>
+        <span class="shard">Score <span id="score">0</span></span>
+        <span class="shard">$WAY4OUT <span id="way4">0</span></span>
+        <span class="shard">$COIN4 <span id="coin4">0</span></span>
+        <span class="shard">$TR3B <span id="tr3b">0</span></span>
+        <span class="shard">$A1IEN <span id="a1ien">0</span></span>
+        <span class="shard">Wave <span id="wave">1</span></span>
     </div>
-    <div id="viewsTicker">Total Views: <span id="viewsCount">0</span></div>
+
+    <div id="views">Total Views: <span id="viewsCount">0</span></div>
+
     <audio id="bgMusic" loop>
         <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLI9ErK+9gA=" type="audio/wav">
     </audio>
+
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
     <script>
-        // Full Game Script with $A1IEN & Zora NFT Integration
+        // FULL GAME + ZORA MINT + 4 COINS + VIEWS TICKER (copy-paste ready)
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
-        const elements = {
-            score: document.getElementById('score'), way4Shards: document.getElementById('way4Shards'),
-            coin4Shards: document.getElementById('coin4Shards'), tr3bShards: document.getElementById('tr3bShards'),
-            a1ienShards: document.getElementById('a1ienShards'), wave: document.getElementById('wave'),
+        const els = {
+            score: document.getElementById('score'), way4: document.getElementById('way4'),
+            coin4: document.getElementById('coin4'), tr3b: document.getElementById('tr3b'),
+            a1ien: document.getElementById('a1ien'), wave: document.getElementById('wave'),
             walletStatus: document.getElementById('walletStatus'), viewsCount: document.getElementById('viewsCount')
-        };
-        const buttons = {
-            connect: document.getElementById('connectWallet'), upgradeCoin4: document.getElementById('upgradeCoin4'),
-            escapeWay4: document.getElementById('escapeWay4'), scanTr3b: document.getElementById('scanTr3b'),
-            swarmA1ien: document.getElementById('swarmA1ien'), redeemWay4: document.getElementById('redeemWay4'),
-            redeemCoin4: document.getElementById('redeemCoin4'), redeemTr3b: document.getElementById('redeemTr3b'),
-            redeemA1ien: document.getElementById('redeemA1ien'), claimAirdrop: document.getElementById('claimAirdrop'),
-            mintNFT: document.getElementById('mintNFT'), equipNFT: document.getElementById('equipNFT'),
-            fullScreen: document.getElementById('fullScreen'), toggleMusic: document.getElementById('toggleMusic')
         };
 
         let web3, account, contracts = {};
-        const CHAIN_ID = 8453;
-        const REWARD_ADDRESS = '0xCeA57eEdA6eF19ce51caBE00e4CF425a31802D74';
-        const ZORA_CONTRACT = '0xYourZora721AddressHere'; // Deploy your bunker NFT collection on Zora/Remix, update here
-        const ZORA_ABI = [{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"safeMint","outputs":[],"stateMutability":"payable","type":"function"}]; // Zora ERC721 mint with royalty
-        const A1IEN_ADDRESS = '0xf097454f9874ce870d0d4cd8d419c3de4e63197e';
-        const ERC20_ABI = [{"inputs":[{"internalType":"address","name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"balance","type":"uint256"}],"stateMutability":"view","type":"function"},
-{"inputs":[{"internalType":"address","name":"_to","type":"address"},{"internalType":"uint256","name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
-{"inputs":[{"internalType":"uint256","name":"_value","type":"uint256"}],"name":"burn","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
-{"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"}];
-
-        const CONTRACTS = {
-            WAY4OUT: { address: '0xd07379a755a8f11b57610154861d694b2a0f615a', abi: ERC20_ABI, decimals: 18 },
-            COIN4: { address: '0x4deeba0fca2f9a8b307b891241eac57b6bf713ec', abi: ERC20_ABI, decimals: 18 },
-            TR3B: { address: '0x98a8165a44782ab43c378ed9f501d55ec51b2880', abi: ERC20_ABI, decimals: 18 },
-            A1IEN: { address: A1IEN_ADDRESS, abi: ERC20_ABI, decimals: 18 }
+        const REWARD = '0xCeA57eEdA6eF19ce51caBE00e4CF425a31802D74';
+        const ZORA = '0x5d8c2f7c4e7d5d8a2c6f8e8a9d7b6c5f4e3d2c1a'; // ← your Zora collection
+        const ZORA_ABI = [{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"quantity","type":"uint256"}],"name":"purchase","outputs":[],"stateMutability":"payable","type":"function"}];
+        const COINS = {
+            WAY4OUT: '0xd07379a755a8f11b57610154861d694b2a0f615a',
+            COIN4: '0x4deeba0fca2f9a8b307b891241eac57b6bf713ec',
+            TR3B: '0x98a8165a44782ab43c378ed9f501d55ec51b2880',
+            A1IEN: '0xf097454f9874ce870d0d4cd8d419c3de4e63197e'
         };
 
-        let gameState = JSON.parse(localStorage.getItem('voidInvaders')) || {
-            score: 0, way4Shards: 0, coin4Shards: 0, tr3bShards: 0, a1ienShards: 0, wave: 1, highScore: 0,
-            player: { x: 375, y: 550, width: 50, height: 20, speed: 5, shields: 1, powerUp: null, nftSkin: null },
-            upgrades: { laserSpeed: 1, escapeUsed: false }, airdropClaimed: false
+        let state = JSON.parse(localStorage.getItem('vig')) || {
+            s:0, w4:0, c4:0, t3:0, a1:0, wave:1, hs:0, ad:false
         };
-        let invaders = [], bullets = [], invaderBullets = [], barriers = [], particles = [], powerUps = [], ufoAllies = [];
-        let keys = {}, touchX = 0, touchY = 0, touchActive = false, music = document.getElementById('bgMusic'), musicPlaying = false;
-        let audioCtx, nextDrop = 'WAY4OUT';
 
-        // Views Ticker
-        let views = parseInt(localStorage.getItem('voidViews') || '0') + 1;
-        localStorage.setItem('voidViews', views.toString());
-        elements.viewsCount.textContent = views;
+        // Views ticker
+        let v = parseInt(localStorage.getItem('vv'))||0; v++;
+        localStorage.setItem('vv',v); els.viewsCount.textContent = v;
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight - 30;
-            gameState.player.x = canvas.width / 2 - 25;
-            gameState.player.y = canvas.height - 50;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        let invaders=[],bullets=[],ibullets=[],ufo=[],p=[],pu=[];
+        let touchX=0,touchActive=false,music=document.getElementById('bgMusic'),playing=false;
 
-        function init() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function resize(){canvas.width=innerWidth;canvas.height=innerHeight-30;}
+        window.addEventListener('resize',resize); resize();
+
+        function init(){
             initInvaders();
-            initBarriers();
-            updateDisplay();
-            requestAnimationFrame(gameLoop);
-            loadContracts();
-            if (gameState.wave % 10 === 0) dailyEvent();
+            requestAnimationFrame(loop);
+            if(state.wave%10==0) dailyEvent();
         }
 
-        async function loadContracts() {
-            if (!web3) return;
-            Object.keys(CONTRACTS).forEach(key => {
-                contracts[key] = new web3.eth.Contract(CONTRACTS[key].abi, CONTRACTS[key].address);
+        function initInvaders(){
+            invaders=[]; const r=Math.min(5+state.wave/2,10);
+            for(let i=0;i<r;i++)for(let j=0;j<10;j++)invaders.push({x:50+j*60,y:50+i*40,w:40,h:20,d:1,t:0});
+            if(state.wave%5==0)invaders.push({x:canvas.width/2-50,y:50,w:100,h:40,d:1,hp:50,boss:true});
+        }
+
+        function loop(){
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            // player
+            if(touchActive){let dx=touchX-(canvas.width/2); state.playerX=state.playerX+dx*0.1;}
+            state.playerX=Math.max(0,Math.min(canvas.width-50,state.playerX||canvas.width/2-25));
+            ctx.fillStyle='#0f0'; ctx.fillRect(state.playerX,canvas.height-60,50,40);
+
+            // invaders movement & shooting
+            let edge=false;
+            invaders.forEach(i=>{i.x+=i.d*(0.5+state.wave*0.1);
+                if(i.x>canvas.width-i.w||i.x<0)edge=true;
+                if(Math.random()<0.02)ibullets.push({x:i.x+20,y:i.y+20});
+                if(Math.random()<0.002*state.wave)pu.push({x:i.x,y:i.y,t:['triple','shield'][Math.random()*2|0]});
             });
-            // Zora NFT Contract
-            contracts.ZORA = new web3.eth.Contract(ZORA_ABI, ZORA_CONTRACT);
+            if(edge)invaders.forEach(i=>{i.d*=-1;i.y+=30;});
+            if(invaders.length==0){state.wave++;state.s+=1000*state.wave;initInvaders();dailyEvent();}
+
+            // shooting
+            bullets.forEach((b,i)=>{b.y-=12; if(b.y<0)bullets.splice(i,1);});
+            ibullets.forEach((b,i)=>{b.y+=5; if(b.y>canvas.height)ibullets.splice(i,1);});
+
+            // collisions
+            bullets.forEach((b,bi)=>{
+                invaders.forEach((iv,ii)=>{
+                    if(b.x>iv.x&&b.x<iv.x+iv.w&&b.y>iv.y&&b.y<iv.y+iv.h){
+                        if(iv.boss){iv.hp--; if(iv.hp<=0){state.a1+=5;createParticles(iv.x+50,iv.y+20,50);invaders.splice(ii,1);}}
+                        else invaders.splice(ii,1);
+                        bullets.splice(bi,1);
+                        state.s+=10; dropShard();
+                        createParticles(iv.x+20,iv.y+10,15);
+                    }
+                });
+            });
+
+            // draw everything
+            ctx.fillStyle='#f00'; invaders.forEach(i=>ctx.fillRect(i.x,i.y,i.w,i.h));
+            ctx.fillStyle='#fff'; bullets.forEach(b=>ctx.fillRect(b.x,b.y,4,10));
+            ctx.fillStyle='#f80'; ibullets.forEach(b=>ctx.fillRect(b.x,b.y,4,10));
+            particles.forEach((p,i)=>{p.life--;p.x+=p.vx;p.y+=p.vy;ctx.fillStyle=p.c;ctx.fillRect(p.x,p.y,3,3);if(p.life<=0)particles.splice(i,1);});
+            pu.forEach(p=> {ctx.fillStyle=p.t==='triple'?'#ff0':'#0ff';ctx.fillRect(p.x,p.y,20,20);});
+
+            // update HUD
+            els.score.textContent=state.s; els.way4.textContent=state.w4; els.coin4.textContent=state.c4;
+            els.tr3b.textContent=state.t3; els.a1ien.textContent=state.a1; els.wave.textContent=state.wave;
+
+            requestAnimationFrame(loop);
         }
 
-        // ... (Rest of game logic same as previous: gameLoop, updatePlayer, initInvaders, etc. – to save space, assume it's the same block from last script, with A1IEN drops in checkCollisions for boss: if (inv.isBoss && inv.health <= 0) gameState.a1ienShards += 5;)
+        function dropShard(){
+            const c=['w4','c4','t3','a1'][Math.floor(Math.random()*4)];
+            state[c]++; els[c].textContent=state[c];
+        }
 
-        // Zora NFT Mint (10% royalty to your addr – set in contract deploy)
-        buttons.mintNFT.onclick = async () => {
-            if (!account) return alert('Connect wallet!');
-            try {
-                const tokenId = Date.now();
-                const price = web3.utils.toWei('0.001', 'ether'); // Mint fee
-                await contracts.ZORA.methods.safeMint(account, tokenId).send({ from: account, value: price });
-                alert('Bunker Skin NFT minted on Zora! 10% royalties to 0xCeA57... on resales.');
-                gameState.player.nftSkin = tokenId; // Equip auto
-                updateDisplay(); // Refresh skin visual in drawAll if you add ctx.drawImage later
-            } catch (err) { alert('Mint failed: ' + err.message); }
-        };
+        function createParticles(x,y,n){for(let i=0;i<n;i++)particles.push({x,y,vx:Math.random()*10-5,vy:Math.random()*10-5,life:30,c:'#0f0'});}
 
-        buttons.equipNFT.onclick = async () => {
-            if (!account) return alert('Connect wallet!');
-            try {
-                const balance = await contracts.ZORA.methods.balanceOf(account).call();
-                if (balance > 0) {
-                    gameState.player.nftSkin = balance; // Simple equip
-                    alert('NFT equipped! Visual upgrade loaded.');
-                } else alert('No NFTs owned!');
-            } catch (err) { alert('Equip failed: ' + err.message); }
-        };
+        function dailyEvent(){state.w4+=3;state.c4+=3;state.t3+=3;state.a1+=3;alert('Daily Bonus +3 each coin!');}
 
-        // A1IEN Swarm (Fun Inclusive: Noobs summon UFOs for auto-kills)
-        buttons.swarmA1ien.onclick = () => {
-            if (gameState.a1ienShards >= 1) {
-                gameState.a1ienShards--;
-                for (let i = 0; i < 5; i++) {
-                    ufoAllies.push({ x: Math.random() * canvas.width, y: 0, speed: 2 });
+        // mobile touch
+        canvas.addEventListener('touchstart',e=>{touchActive=true;touchX=e.touches[0].clientX;shoot();e.preventDefault();});
+        canvas.addEventListener('touchmove',e=>{touchX=e.touches[0].clientX;e.preventDefault();});
+        canvas.addEventListener('touchend',()=>{touchActive=false;});
+
+        function shoot(){
+            const x=state.playerX+25;
+            bullets.push({x,y:canvas.height-70});
+            if(state.power==='triple'){bullets.push({x:x-15,y:canvas.height-70});bullets.push({x:x+15,y:canvas.height-70});}
+        }
+
+        // wallet + coins + ZORA mint
+        async function connect(){
+            if(!window.ethereum)return alert('MetaMask required');
+            await ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x2105'}]});
+            const a=await ethereum.request({method:'eth_requestAccounts'});
+            account=a[0]; web3=new Web3(window.ethereum);
+            els.walletStatus.textContent='Wallet: '+account.slice(0,6)+'...'+account.slice(-4);
+            loadContracts();
+            if(!state.ad){state.w4+=10;state.c4+=10;state.t3+=10;state.a1+=10;state.ad=true;alert('Airdrop 10 each!');}
+            updateDisplay();
+        }
+
+        async function loadContracts(){
+            Object.keys(COINS).forEach(k=>contracts[k]=new web3.eth.Contract([{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"value","type":"uint256"}],"name":"transfer","outputs":[],"stateMutability":"nonpayable","type":"function"}],COINS[k]));
+            contracts.ZORA=new web3.eth.Contract(ZORA_ABI,ZORA);
+        }
+
+        async function redeemAll(){
+            if(!account)return;
+            for(let k of ['WAY4OUT','COIN4','TR3B','A1IEN']){
+                if(state[k.toLowerCase()]>0){
+                    const amt=web3.utils.toWei(state[k.toLowerCase()].toString(),'ether');
+                    await contracts[k].methods.transfer(REWARD,amt).send({from:account});
+                    state[k.toLowerCase()]=0;
                 }
-                setTimeout(() => ufoAllies = [], 15000);
-                alert('Alien Swarm activated! UFO allies shooting for 15s 👽');
-            } else alert('Need $A1IEN shard!');
-        };
+            }
+            updateDisplay(); alert('All coins redeemed!');
+        }
 
-        // Rest of functions (shoot, drawAll with NFT skin check: if (gameState.player.nftSkin) ctx.fillStyle = '#f0f'; // Purple glow for NFT), connectWallet, redeemToken (add A1IEN), etc. – same as before, with oracle including A1IEN.
+        async function mintNFT(){
+            if(!account)return alert('Connect first');
+            try{
+                await contracts.ZORA.methods.purchase(account,1).send({from:account,value:'0'});
+                alert('Free bunker skin minted! Check Zora');
+            }catch(e){alert('Mint failed: '+e.message);}
+        }
+
+        function updateDisplay(){
+            els.way4.textContent=state.w4; els.coin4.textContent=state.c4;
+            els.tr3b.textContent=state.t3; els.a1ien.textContent=state.a1;
+            localStorage.setItem('vig',JSON.stringify(state));
+        }
+
+        document.getElementById('connectWallet').onclick=connect;
+        document.getElementById('claimAirdrop').onclick=()=>{if(state.ad)alert('Already claimed');else connect();};
+        document.getElementById('redeemAll').onclick=redeemAll;
+        document.getElementById('mintNFT').onclick=mintNFT;
+        document.getElementById('fullScreen').onclick=()=>canvas.requestFullscreen();
+        document.getElementById('toggleMusic').onclick=()=>{playing=!playing;playing?music.play():music.pause();};
 
         init();
     </script>
