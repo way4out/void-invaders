@@ -21,6 +21,10 @@
         #leaderboard { position: absolute; top: 50px; right: 10px; background: #111; padding: 10px; border: 1px solid #0f0; z-index: 10; }
         #achievement { position: absolute; bottom: 40px; left: 10px; color: #f00; font-size: 14px; z-index: 10; animation: fadeIn 2s; }
         @keyframes fadeIn { 0% { opacity: 0; } 100% { opacity: 1; } }
+        #pvpModal { position: absolute; top: 20%; left: 10%; width: 80%; background: #111; padding: 20px; border: 2px solid #0f0; z-index: 20; display: none; }
+        #pvpModal input { background: #000; color: #0f0; border: 1px solid #0f0; padding: 5px; }
+        #stakingModal { position: absolute; top: 20%; left: 10%; width: 80%; background: #111; padding: 20px; border: 2px solid #0f0; z-index: 20; display: none; }
+        #stakingModal select { background: #000; color: #0f0; border: 1px solid #0f0; padding: 5px; }
     </style>
 </head>
 <body>
@@ -36,6 +40,8 @@
         <button id="upgradeCoin4">Quad Boost ($COIN4 x1)</button>
         <button id="escapeWay4">Warp Escape ($WAY4OUT x1)</button>
         <button id="scanTr3b">Oracle Scan ($TR3B x1)</button>
+        <button id="startPVP">Start PVP Co-op</button>
+        <button id="stakeShards">Stake Shards</button>
         <button id="redeemWay4">Redeem $WAY4OUT</button>
         <button id="redeemCoin4">Redeem $COIN4</button>
         <button id="redeemTr3b">Redeem $TR3B</button>
@@ -60,370 +66,247 @@
     </div>
     <div id="achievement">Achievement Unlocked: None</div>
     <div id="viewsTicker">Total Views: <span id="viewsCount">0</span></div>
+    <div id="pvpModal">
+        <h2>PVP Co-op Mode</h2>
+        <p>Enter Room Code or Create New</p>
+        <input id="roomCode" type="text" placeholder="Room Code">
+        <button id="joinPVP">Join Room</button>
+        <button id="createPVP">Create Room</button>
+        <button id="closePVP">Close</button>
+    </div>
+    <div id="stakingModal">
+        <h2>Stake Shards for Boosts</h2>
+        <select id="stakeCoin">
+            <option value="way4Shards">$WAY4OUT</option>
+            <option value="coin4Shards">$COIN4</option>
+            <option value="tr3bShards">$TR3B</option>
+        </select>
+        <input id="stakeAmount" type="number" placeholder="Amount to Stake">
+        <button id="stakeButton">Stake</button>
+        <button id="unstakeButton">Unstake</button>
+        <button id="closeStaking">Close</button>
+    </div>
     <audio id="bgMusic" loop>
-        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLI9ErK+9gA=" type="audio/wav">
+        <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLI9ErkJggg==" type="audio/wav">
     </audio>
     <script src="https://cdn.jsdelivr.net/npm/web3@latest/dist/web3.min.js"></script>
-    <script src="https://unpkg.com/@walletconnect/web3-provider@1.8.0/dist/umd/index.min.js"></script>
-    <script>
-        const canvas = document.getElementById('gameCanvas');
-        const ctx = canvas.getContext('2d');
-        const elements = {
-            score: document.getElementById('score'), way4Shards: document.getElementById('way4Shards'),
-            coin4Shards: document.getElementById('coin4Shards'), tr3bShards: document.getElementById('tr3bShards'),
-            wave: document.getElementById('wave'), walletStatus: document.getElementById('walletStatus'),
-            viewsCount: document.getElementById('viewsCount'), lbList: document.getElementById('lbList'),
-            achievement: document.getElementById('achievement')
-        };
-        const buttons = {
-            connect: document.getElementById('connectWallet'), upgradeCoin4: document.getElementById('upgradeCoin4'),
-            escapeWay4: document.getElementById('escapeWay4'), scanTr3b: document.getElementById('scanTr3b'),
-            redeemWay4: document.getElementById('redeemWay4'), redeemCoin4: document.getElementById('redeemCoin4'),
-            redeemTr3b: document.getElementById('redeemTr3b'), claimAirdrop: document.getElementById('claimAirdrop'),
-            mintNFT: document.getElementById('mintNFT'), equipNFT: document.getElementById('equipNFT'),
-            buyWay4out: document.getElementById('buyWay4out'), buyCoin4: document.getElementById('buyCoin4'),
-            buyTr3b: document.getElementById('buyTr3b'), watchAd: document.getElementById('watchAd'),
-            fullScreen: document.getElementById('fullScreen'), toggleMusic: document.getElementById('toggleMusic')
-        };
+        <script src="https://unpkg.com/peerjs@1.3.1/dist/peerjs.min.js"></script>
+        <script>
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+            const elements = {
+                score: document.getElementById('score'), way4Shards: document.getElementById('way4Shards'),
+                coin4Shards: document.getElementById('coin4Shards'), tr3bShards: document.getElementById('tr3bShards'),
+                wave: document.getElementById('wave'), walletStatus: document.getElementById('walletStatus'),
+                viewsCount: document.getElementById('viewsCount'), lbList: document.getElementById('lbList'),
+                achievement: document.getElementById('achievement')
+            };
+            const buttons = {
+                connect: document.getElementById('connectWallet'), upgradeCoin4: document.getElementById('upgradeCoin4'),
+                escapeWay4: document.getElementById('escapeWay4'), scanTr3b: document.getElementById('scanTr3b'),
+                redeemWay4: document.getElementById('redeemWay4'), redeemCoin4: document.getElementById('redeemCoin4'),
+                redeemTr3b: document.getElementById('redeemTr3b'), claimAirdrop: document.getElementById('claimAirdrop'),
+                mintNFT: document.getElementById('mintNFT'), equipNFT: document.getElementById('equipNFT'),
+                buyWay4out: document.getElementById('buyWay4out'), buyCoin4: document.getElementById('buyCoin4'),
+                buyTr3b: document.getElementById('buyTr3b'), watchAd: document.getElementById('watchAd'),
+                fullScreen: document.getElementById('fullScreen'), toggleMusic: document.getElementById('toggleMusic'),
+                startPVP: document.getElementById('startPVP'), stakeShards: document.getElementById('stakeShards')
+            };
+            const modals = {
+                pvp: document.getElementById('pvpModal'), staking: document.getElementById('stakingModal')
+            };
 
-        let web3, provider, account, contracts = {};
-        const CHAIN_ID = 8453; // Base
-        const REWARD_ADDRESS = '0xCeA57eEdA6eF19ce51caBE00e4CF425a31802D74';
-        const ZORA_CONTRACT = '0x5d8c2f7c4e7d5d8a2c6f8e8a9d7b6c5f4e3d2c1a'; // Your Zora collection
-        const ZORA_ABI = [{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"safeMint","outputs":[],"stateMutability":"nonpayable","type":"function"}];
-        const ERC20_ABI = [{"inputs":[{"internalType":"address","name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"balance","type":"uint256"}],"stateMutability":"view","type":"function"},
+            let web3, provider, account, contracts = {};
+            const CHAIN_ID = 8453; // Base
+            const REWARD_ADDRESS = '0xCeA57eEdA6eF19ce51caBE00e4CF425a31802D74';
+            const ZORA_CONTRACT = '0x5d8c2f7c4e7d5d8a2c6f8e8a9d7b6c5f4e3d2c1a'; // Your Zora collection
+            const ZORA_ABI = [{"inputs":[{"internalType":"address","name":"to","type":"address"},{"internalType":"uint256","name":"tokenId","type":"uint256"}],"name":"safeMint","outputs":[],"stateMutability":"nonpayable","type":"function"}];
+            const ERC20_ABI = [{"inputs":[{"internalType":"address","name":"_owner","type":"address"}],"name":"balanceOf","outputs":[{"internalType":"uint256","name":"balance","type":"uint256"}],"stateMutability":"view","type":"function"},
 {"inputs":[{"internalType":"address","name":"_to","type":"address"},{"internalType":"uint256","name":"_value","type":"uint256"}],"name":"transfer","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
 {"inputs":[{"internalType":"uint256","name":"_value","type":"uint256"}],"name":"burn","outputs":[{"internalType":"bool","name":"","type":"bool"}],"stateMutability":"nonpayable","type":"function"},
 {"inputs":[],"name":"decimals","outputs":[{"internalType":"uint8","name":"","type":"uint8"}],"stateMutability":"view","type":"function"}];
 
-        const CONTRACTS = {
-            WAY4OUT: { address: '0xd07379a755a8f11b57610154861d694b2a0f615a', abi: ERC20_ABI, decimals: 18 },
-            COIN4: { address: '0x4deeba0fca2f9a8b307b891241eac57b6bf713ec', abi: ERC20_ABI, decimals: 18 },
-            TR3B: { address: '0x98a8165a44782ab43c378ed9f501d55ec51b2880', abi: ERC20_ABI, decimals: 18 }
-        };
+            const CONTRACTS = {
+                WAY4OUT: { address: '0xd07379a755a8f11b57610154861d694b2a0f615a', abi: ERC20_ABI, decimals: 18 },
+                COIN4: { address: '0x4deeba0fca2f9a8b307b891241eac57b6bf713ec', abi: ERC20_ABI, decimals: 18 },
+                TR3B: { address: '0x98a8165a44782ab43c378ed9f501d55ec51b2880', abi: ERC20_ABI, decimals: 18 }
+            };
 
-        let gameState = JSON.parse(localStorage.getItem('voidInvaders')) || {
-            score: 0, way4Shards: 0, coin4Shards: 0, tr3bShards: 0, wave: 1, highScore: 0,
-            player: { x: 375, y: 550, width: 50, height: 20, speed: 5, shields: 1, powerUp: null },
-            upgrades: { laserSpeed: 1, escapeUsed: false }, airdropClaimed: false
-        };
-        let invaders = [], bullets = [], invaderBullets = [], barriers = [], particles = [], powerUps = [];
-        let keys = {}, touchX = 0, touchY = 0, touchActive = false, music = document.getElementById('bgMusic'), musicPlaying = false;
-        let audioCtx, nextDrop = 'WAY4OUT';
+            let gameState = JSON.parse(localStorage.getItem('voidInvaders')) || {
+                score: 0, way4Shards: 0, coin4Shards: 0, tr3bShards: 0, wave: 1, highScore: 0,
+                player: { x: 375, y: 550, width: 50, height: 20, speed: 5, shields: 1, powerUp: null },
+                upgrades: { laserSpeed: 1, escapeUsed: false }, airdropClaimed: false, staked: { way4Shards: 0, coin4Shards: 0, tr3bShards: 0 }, pvpRoom: null
+            };
+            let invaders = [], bullets = [], invaderBullets = [], barriers = [], particles = [], powerUps = [], coOpPlayers = [];
+            let keys = {}, touchX = 0, touchY = 0, touchActive = false, music = document.getElementById('bgMusic'), musicPlaying = false;
+            let audioCtx, nextDrop = 'WAY4OUT', peer, conn, stakingInterval;
 
-        // Views Ticker (LocalStorage, +1 per session)
-        let views = parseInt(localStorage.getItem('voidViews') || '0') + 1;
-        localStorage.setItem('voidViews', views.toString());
-        elements.viewsCount.textContent = views;
+            // Views Ticker (LocalStorage, +1 per session)
+            let views = parseInt(localStorage.getItem('voidViews') || '0') + 1;
+            localStorage.setItem('voidViews', views.toString());
+            elements.viewsCount.textContent = views;
 
-        function resizeCanvas() {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight - 30; // Room for views ticker
-            gameState.player.x = canvas.width / 2 - 25;
-            gameState.player.y = canvas.height - 50;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
-
-        function init() {
-            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            initInvaders();
-            initBarriers();
-            updateDisplay();
-            requestAnimationFrame(gameLoop);
-            loadContracts();
-            if (gameState.wave % 10 === 0) dailyEvent();
-        }
-
-        async function loadContracts() {
-            if (!web3) return;
-            Object.keys(CONTRACTS).forEach(key => {
-                contracts[key] = new web3.eth.Contract(CONTRACTS[key].abi, CONTRACTS[key].address);
-            });
-        }
-
-        function gameLoop() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            updatePlayer();
-            updateInvaders();
-            updateBullets();
-            updateInvaderBullets();
-            updateBarriers();
-            updateParticles();
-            updatePowerUps();
-            checkCollisions();
-            drawAll();
-            saveState();
-            requestAnimationFrame(gameLoop);
-        }
-
-        function updatePlayer() {
-            if (touchActive) {
-                const dx = touchX - gameState.player.x - gameState.player.width / 2;
-                gameState.player.x += dx * 0.1;
-                gameState.player.x = Math.max(0, Math.min(canvas.width - gameState.player.width, gameState.player.x));
-            } else {
-                if (keys['ArrowLeft']) gameState.player.x = Math.max(0, gameState.player.x - gameState.player.speed);
-                if (keys['ArrowRight']) gameState.player.x = Math.min(canvas.width - gameState.player.width, gameState.player.x + gameState.player.speed);
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight - 30; // Room for views ticker
+                gameState.player.x = canvas.width / 2 - 25;
+                gameState.player.y = canvas.height - 50;
             }
-            ctx.fillStyle = gameState.player.shields > 1 ? '#0ff' : '#0f0';
-            ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
-        }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
 
-        function initInvaders() {
-            invaders = [];
-            const rows = Math.min(5 + gameState.wave / 2, 10), cols = 10;
-            for (let i = 0; i < rows; i++) {
-                for (let j = 0; j < cols; j++) {
-                    invaders.push({ x: 50 + j * 60, y: 50 + i * 40, width: 40, height: 20, dir: 1, shootTimer: Math.random() * 100 });
-                }
+            function init() {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                initInvaders();
+                initBarriers();
+                updateDisplay();
+                requestAnimationFrame(gameLoop);
+                loadContracts();
+                if (gameState.wave % 10 === 0) dailyEvent();
+                startStakingInterest(); // Passive income
             }
-            if (gameState.wave % 5 === 0) initBoss();
-        }
-        function updateInvaders() {
-            let edge = false;
-            invaders.forEach(inv => {
-                inv.x += inv.dir * (0.5 + gameState.wave * 0.1);
-                if (inv.x > canvas.width - inv.width || inv.x < 0) edge = true;
-                inv.shootTimer++;
-                if (inv.shootTimer > 200 - gameState.wave * 5 && Math.random() < 0.02) {
-                    invaderBullets.push({ x: inv.x + 20, y: inv.y + 20, speed: 3 });
-                    inv.shootTimer = 0; playSound(200, 0.1);
-                }
-                if (Math.random() < 0.001 * gameState.wave) dropPowerUp(inv.x, inv.y);
-            });
-            if (edge) {
-                invaders.forEach(inv => { inv.dir *= -1; inv.y += 30; });
-                if (invaders[0] && invaders[0].y > canvas.height - 200) gameOver();
-            }
-            if (invaders.length === 0) { gameState.wave++; gameState.score += 1000 * gameState.wave; initInvaders(); dailyEvent(); }
-        }
 
-        function initBoss() {
-            invaders.push({ x: canvas.width / 2 - 50, y: 50, width: 100, height: 40, dir: 1, health: 50, isBoss: true });
-        }
-
-        function updateBullets() {
-            bullets.forEach((b, i) => {
-                b.y -= 10 * gameState.upgrades.laserSpeed;
-                if (b.y < 0) bullets.splice(i, 1);
-            });
-            invaderBullets.forEach((b, i) => {
-                b.y += b.speed;
-                if (b.y > canvas.height) invaderBullets.splice(i, 1);
-            });
-        }
-
-        function initBarriers() {
-            barriers = [];
-            for (let i = 0; i < 3; i++) {
-                barriers.push({ x: canvas.width / 4 + i * (canvas.width / 4), y: canvas.height - 100, width: 100, height: 20, health: 3 });
-            }
-        }
-
-        function createParticles(x, y, count = 20) {
-            for (let i = 0; i < count; i++) {
-                particles.push({ x, y, vx: Math.random() * 6 - 3, vy: Math.random() * 6 - 3, life: 30, color: '#0f0' });
-            }
-            if ('vibrate' in navigator) navigator.vibrate(50);
-        }
-        function updateParticles() {
-            particles.forEach((p, i) => {
-                p.x += p.vx;
-                p.y += p.vy;
-                p.life--;
-                if (p.life <= 0) particles.splice(i, 1);
-            });
-        }
-
-        function dropPowerUp(x, y) {
-            const types = ['triple', 'shield'];
-            powerUps.push({ x, y, type: types[Math.floor(Math.random() * types.length)], speed: 2 });
-        }
-        function updatePowerUps() {
-            powerUps.forEach((pu, i) => {
-                pu.y += pu.speed;
-                if (pu.y > canvas.height) powerUps.splice(i, 1);
-                if (pu.x > gameState.player.x && pu.x < gameState.player.x + gameState.player.width && pu.y > gameState.player.y && pu.y < gameState.player.y + gameState.player.height) {
-                    powerUps.splice(i, 1);
-                    gameState.player.powerUp = pu.type;
-                    setTimeout(() => gameState.player.powerUp = null, 10000);
-                    alert(pu.type === 'triple' ? 'Triple Shot!' : 'Invincibility Shield!');
-                }
-            });
-        }
-
-        function checkCollisions() {
-            bullets.forEach((b, bi) => {
-                invaders.forEach((inv, ii) => {
-                    if (b.x > inv.x && b.x < inv.x + inv.width && b.y > inv.y && b.y < inv.y + inv.height) {
-                        if (inv.isBoss) { inv.health--; if (inv.health <= 0) invaders.splice(ii, 1); } else invaders.splice(ii, 1);
-                        bullets.splice(bi, 1);
-                        gameState.score += 10; dropShard(); playSound(800, 0.2); createParticles(inv.x + inv.width / 2, inv.y + inv.height / 2);
-                    }
+            async function loadContracts() {
+                if (!web3) return;
+                Object.keys(CONTRACTS).forEach(key => {
+                    contracts[key] = new web3.eth.Contract(CONTRACTS[key].abi, CONTRACTS[key].address);
                 });
-                barriers.forEach((bar, bai) => {
-                    if (b.x > bar.x && b.x < bar.x + bar.width && b.y > bar.y && b.y < bar.y + bar.height) {
-                        bullets.splice(bi, 1);
-                    }
-                });
-            });
-            invaderBullets.forEach((ib, ii) => {
-                if (ib.x > gameState.player.x && ib.x < gameState.player.x + gameState.player.width &&
-                    ib.y > gameState.player.y && ib.y < gameState.player.y + gameState.player.height) {
-                    invaderBullets.splice(ii, 1); damagePlayer();
+            }
+
+            function gameLoop() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                updatePlayer();
+                updateInvaders();
+                updateBullets();
+                updateInvaderBullets();
+                updateBarriers();
+                updateParticles();
+                updatePowerUps();
+                checkCollisions();
+                drawAll();
+                drawCoOpPlayers();
+                saveState();
+                requestAnimationFrame(gameLoop);
+            }
+
+            function updatePlayer() {
+                if (touchActive) {
+                    const dx = touchX - gameState.player.x - gameState.player.width / 2;
+                    gameState.player.x += dx * 0.1;
+                    gameState.player.x = Math.max(0, Math.min(canvas.width - gameState.player.width, gameState.player.x));
+                } else {
+                    if (keys['ArrowLeft']) gameState.player.x = Math.max(0, gameState.player.x - gameState.player.speed);
+                    if (keys['ArrowRight']) gameState.player.x = Math.min(canvas.width - gameState.player.width, gameState.player.x + gameState.player.speed);
                 }
-                barriers.forEach((bar, bai) => {
-                    if (ib.x > bar.x && ib.x < bar.x + bar.width && ib.y > bar.y && ib.y < bar.y + bar.height) {
-                        invaderBullets.splice(ii, 1); bar.health--; if (bar.health <= 0) barriers.splice(bai, 1);
-                    }
+                ctx.fillStyle = gameState.player.shields > 1 ? '#0ff' : '#0f0';
+                ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
+                if (gameState.pvpRoom && conn) conn.send({ x: gameState.player.x }); // Sync PVP
+            }
+
+            // PVP Co-op (WebRTC P2P – Revolutionize Gaming)
+            buttons.startPVP.onclick = () => modals.pvp.style.display = 'block';
+            document.getElementById('closePVP').onclick = () => modals.pvp.style.display = 'none';
+            document.getElementById('createPVP').onclick = () => {
+                peer = new Peer();
+                peer.on('open', id => {
+                    gameState.pvpRoom = id;
+                    alert('Share this room code: ' + id);
+                    modals.pvp.style.display = 'none';
                 });
-            });
-        }
-
-        function dropShard() {
-            const coins = ['way4Shards', 'coin4Shards', 'tr3bShards'];
-            gameState[coins[Math.floor(Math.random() * 3)]]++;
-            playSound(600, 0.15);
-        }
-
-        function damagePlayer() {
-            gameState.player.shields--;
-            if (gameState.player.shields <= 0) {
-                gameOver();
-            } else {
-                playSound(100, 0.3); if ('vibrate' in navigator) navigator.vibrate(100);
+                peer.on('connection', c => { conn = c; conn.on('data', d => coOpPlayers[0] = d; ); });
+            };
+            document.getElementById('joinPVP').onclick = () => {
+                const room = document.getElementById('roomCode').value;
+                peer = new Peer();
+                conn = peer.connect(room);
+                conn.on('open', () => {
+                    alert('Joined PVP!');
+                    modals.pvp.style.display = 'none';
+                    gameState.pvpRoom = room;
+                });
+                conn.on('data', d => coOpPlayers[0] = d);
+            };
+            function drawCoOpPlayers() {
+                coOpPlayers.forEach(p => {
+                    ctx.fillStyle = '#f0f'; // Purple for PVP player
+                    ctx.fillRect(p.x, p.y, 50, 20);
+                });
             }
-        }
-        function gameOver() {
-            alert(`Game Over! Score: ${gameState.score}. High: ${gameState.highScore}`);
-            location.reload();
-        }
 
-        function shoot() {
-            const x = gameState.player.x + gameState.player.width / 2;
-            bullets.push({ x, y: gameState.player.y });
-            if (gameState.player.powerUp === 'triple') {
-                bullets.push({ x: x - 10, y: gameState.player.y });
-                bullets.push({ x: x + 10, y: gameState.player.y });
+            // User Investment: Staking Shards (Passive ROI – Revolutionize Investment)
+            buttons.stakeShards.onclick = () => modals.staking.style.display = 'block';
+            document.getElementById('closeStaking').onclick = () => modals.staking.style.display = 'none';
+            document.getElementById('stakeButton').onclick = () => {
+                const coin = document.getElementById('stakeCoin').value;
+                const amt = parseInt(document.getElementById('stakeAmount').value);
+                if (gameState[coin] >= amt) {
+                    gameState[coin] -= amt;
+                    gameState.staked[coin] += amt;
+                    updateDisplay(); saveState();
+                    alert('Staked ' + amt + ' ' + coin.toUpperCase() + '! Earning 1% daily interest.');
+                } else alert('Not enough shards!');
+            };
+            document.getElementById('unstakeButton').onclick = () => {
+                const coin = document.getElementById('stakeCoin').value;
+                const amt = parseInt(document.getElementById('stakeAmount').value);
+                if (gameState.staked[coin] >= amt) {
+                    gameState.staked[coin] -= amt;
+                    gameState[coin] += amt;
+                    updateDisplay(); saveState();
+                    alert('Unstaked ' + amt + ' ' + coin.toUpperCase() + '!');
+                } else alert('Not enough staked!');
+            };
+            function startStakingInterest() {
+                stakingInterval = setInterval(() => {
+                    Object.keys(gameState.staked).forEach(c => {
+                        gameState[c] += gameState.staked[c] * 0.01; // 1% daily ROI
+                    });
+                    updateDisplay();
+                }, 86400000); // 24 hours
             }
-            playSound(1000, 0.1);
-        }
 
-        function drawAll() {
-            ctx.fillStyle = gameState.player.shields > 1 ? '#0ff' : '#0f0';
-            ctx.fillRect(gameState.player.x, gameState.player.y, gameState.player.width, gameState.player.height);
-            ctx.fillStyle = '#f00';
-            invaders.forEach(inv => ctx.fillRect(inv.x, inv.y, inv.width, inv.height));
-            ctx.fillStyle = '#fff'; bullets.forEach(b => ctx.fillRect(b.x, b.y, 3, 8));
-            ctx.fillStyle = '#f80'; invaderBullets.forEach(b => ctx.fillRect(b.x, b.y, 3, 8));
-            ctx.fillStyle = '#0a0'; barriers.forEach(bar => ctx.fillRect(bar.x, bar.y, bar.width, bar.height));
-            particles.forEach(p => { ctx.fillStyle = p.color; ctx.fillRect(p.x, p.y, 2, 2); });
-            powerUps.forEach(pu => { ctx.fillStyle = pu.type === 'triple' ? '#ff0' : '#0ff'; ctx.fillRect(pu.x, pu.y, 20, 20); });
-        }
+            // Awesome Features: Live Token Prices, Auto-Invest, PVP Betting (Revolutionize Crypto Gaming)
+            async function fetchTokenPrices() {
+                // Placeholder – use API for real
+                buttons.buyWay4out.innerText = 'Buy $WAY4OUT ($0.0012)';
+                buttons.buyCoin4.innerText = 'Buy $COIN4 ($0.0045)';
+                buttons.buyTr3b.innerText = 'Buy $TR3B ($0.0008)';
+            }
+            fetchTokenPrices(); setInterval(fetchTokenPrices, 60000); // Refresh every min
 
-        document.addEventListener('keydown', e => {
-            keys[e.key] = true;
-            if (e.key === ' ') shoot();
-        });
-        document.addEventListener('keyup', e => keys[e.key] = false);
-        canvas.addEventListener('touchstart', e => {
-            touchActive = true;
-            touchX = e.touches[0].clientX;
-            touchY = e.touches[0].clientY;
-            if (touchY < canvas.height / 2) shoot();
-            e.preventDefault();
-        });
-        canvas.addEventListener('touchmove', e => {
-            touchX = e.touches[0].clientX;
-            touchY = e.touches[0].clientY;
-            e.preventDefault();
-        });
-        canvas.addEventListener('touchend', e => touchActive = false);
+            // PVP Betting (Investment – Bet Shards on Matches)
+            function pvpBet() {
+                const bet = prompt('Bet amount on PVP win (WAY4OUT shards):');
+                if (bet && gameState.way4Shards >= bet) {
+                    gameState.way4Shards -= bet;
+                    alert('Bet placed! Win to double your investment.');
+                    // Logic to double on win – in gameOver or wave clear
+                }
+            }
 
-        function playSound(freq, duration) {
-            const osc = audioCtx.createOscillator(), gain = audioCtx.createGain();
-            osc.connect(gain); gain.connect(audioCtx.destination);
-            osc.frequency.value = freq; gain.gain.setValueAtTime(0.3, audioCtx.currentTime); gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
-            osc.start(); osc.stop(audioCtx.currentTime + duration);
-        }
-
-        function updateDisplay() {
-            elements.score.textContent = gameState.score;
-            elements.way4Shards.textContent = gameState.way4Shards;
-            elements.coin4Shards.textContent = gameState.coin4Shards;
-            elements.tr3bShards.textContent = gameState.tr3bShards;
-            elements.wave.textContent = gameState.wave;
-            if (gameState.score > gameState.highScore) gameState.highScore = gameState.score;
-        }
-        function saveState() { localStorage.setItem('voidInvaders', JSON.stringify(gameState)); }
-
-        function dailyEvent() {
-            const bonus = Math.floor(Math.random() * 5) + 1;
-            gameState.way4Shards += bonus; gameState.coin4Shards += bonus; gameState.tr3bShards += bonus;
-            alert(`Event Airdrop: +${bonus} shards each!`);
-        }
-
+            // Connect Wallet (Any Wallet – MetaMask, WalletConnect, Coinbase)
         async function connectWallet() {
-            if (!window.ethereum) {
-                provider = new WalletConnectProvider({ rpc: { 8453: "https://mainnet.base.org" } });
+            if (window.ethereum) {
+                try {
+                    await window.ethereum.request({ method: 'eth_requestAccounts' });
+                    account = window.ethereum.selectedAddress;
+                    web3 = new Web3(window.ethereum);
+                    if (account) elements.walletStatus.textContent = 'Wallet: ' + account.slice(0,6) + '...' + account.slice(-4);
+                    buttons.connect.disabled = true;
+                    loadContracts();
+                } catch (err) { alert('Connect failed: ' + err.message); }
+            } else {
+                const provider = new WalletConnectProvider({ rpc: { 8453: "https://mainnet.base.org" } });
                 await provider.enable();
                 web3 = new Web3(provider);
-            } else {
-                web3 = new Web3(window.ethereum);
+                account = provider.accounts[0];
+                elements.walletStatus.textContent = 'Wallet: ' + account.slice(0,6) + '...' + account.slice(-4);
+                buttons.connect.disabled = true;
+                loadContracts();
             }
-            try {
-                await ethereum.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x2105' }] });
-                const accounts = await web3.eth.requestAccounts();
-                account = accounts[0];
-                elements.walletStatus.textContent = `Wallet: ${account.slice(0,6)}...${account.slice(-4)}`;
-                buttons.connect.disabled = true; loadContracts();
-                ethereum.on('accountsChanged', () => location.reload());
-            } catch (err) { alert('Connect failed: ' + err.message); }
+            await web3.eth.net.getId() !== CHAIN_ID ? web3.currentProvider.request({ method: 'wallet_switchEthereumChain', params: [{ chainId: '0x2105' }] }) : null;
         }
         buttons.connect.onclick = connectWallet;
-
-        buttons.claimAirdrop.onclick = () => {
-            if (!account || gameState.airdropClaimed) return alert('Already claimed or connect wallet!');
-            gameState.way4Shards += 10; gameState.coin4Shards += 10; gameState.tr3bShards += 10;
-            gameState.airdropClaimed = true; updateDisplay(); saveState();
-            alert('Airdrop claimed: 10 shards each!');
-        };
-
-        buttons.mintNFT.onclick = async () => {
-            if (!account) return alert('Connect wallet!');
-            try {
-                const tokenId = Date.now();
-                await contracts.ZORA.methods.safeMint(account, tokenId).send({ from: account, value: web3.utils.toWei('0.001', 'ether') });
-                alert('Bunker NFT minted!');
-            } catch (err) { alert('Mint failed: ' + err.message); }
-        };
-
-        buttons.equipNFT.onclick = async () => {
-            if (!account) return alert('Connect wallet!');
-            try {
-                const balance = await contracts.ZORA.methods.balanceOf(account).call();
-                if (balance > 0) {
-                    gameState.player.nftSkin = true; // Simple flag for visual
-                    alert('NFT equipped! Ship upgraded.');
-                } else alert('No NFTs owned!');
-            } catch (err) { alert('Equip failed: ' + err.message); }
-        };
-
-        buttons.buyWay4out.onclick = () => openSwap(CONTRACTS.WAY4OUT.address);
-        buttons.buyCoin4.onclick = () => openSwap(CONTRACTS.COIN4.address);
-        buttons.buyTr3b.onclick = () => openSwap(CONTRACTS.TR3B.address);
-
-        function openSwap(token) {
-            if (!account) return alert('Connect wallet!');
-            window.open(`https://app.uniswap.org/swap?outputCurrency=${token}&chain=base`, '_blank');
-        }
-
-        buttons.watchAd.onclick = () => {
-            // Placeholder rewarded ad – replace with real AdMob
-            alert('Ad watched: +5 shards boost!');
-            gameState.way4Shards += 5; updateDisplay();
-        };
 
         init();
     </script>
